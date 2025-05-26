@@ -1,7 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import './RecipeCalculator.css'; // We'll create this file for styling soon
+// src/RecipeCalculator.js
+import React, { useState, useEffect, useCallback } from 'react';
+import './RecipeCalculator.css';
 
-// This is the JavaScript version of your Kotlin calculateRecipe function
+const USER_ID_KEY = 'sourdoughAppUserId';
+
+// This will be your Render backend URL when deployed, or localhost for local development
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
+
+const getUserId = () => {
+    let userId = localStorage.getItem(USER_ID_KEY);
+    if (!userId) {
+        userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        localStorage.setItem(USER_ID_KEY, userId);
+    }
+    return userId;
+};
+
+const currentUserId = getUserId();
+
+// ... (calculateRecipe function remains the same) ...
 function calculateRecipe(
     targetDoughWeight,
     hydrationPercentage,
@@ -11,7 +28,6 @@ function calculateRecipe(
 ) {
     // Prevent division by zero and negative weights
     if (targetDoughWeight <= 0 || hydrationPercentage < 0 || starterPercentage < 0 || starterHydration < 0 || saltPercentage < 0) {
-        // Allow 0 for percentages for intermediate input states, but guard calculations
         if (targetDoughWeight <= 0) {
             return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
         }
@@ -23,24 +39,20 @@ function calculateRecipe(
     const starterHydrationDouble = parseFloat(starterHydration) / 100.0;
     const saltPercentageDouble = parseFloat(saltPercentage) / 100.0;
 
-    // Guard against NaN issues if percentages are still 0 or invalid during parsing
     if (isNaN(hydrationPercentageDouble) || isNaN(starterPercentageDouble) || isNaN(starterHydrationDouble) || isNaN(saltPercentageDouble)) {
         return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
     }
-    
-    // Avoid division by zero if (1 + hydrationPercentageDouble) is zero
-    if (1 + hydrationPercentageDouble === 0) {
-         return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
-    }
 
+    if (1 + hydrationPercentageDouble === 0) {
+        return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
+    }
 
     const totalWeightWithoutSalt =
         targetDoughWeightDouble / (1 + saltPercentageDouble * (1 / (1 + hydrationPercentageDouble)));
 
     const totalFlourWeight = totalWeightWithoutSalt / (1 + hydrationPercentageDouble);
 
-    // Avoid division by zero if (1 + starterHydrationDouble) is zero
-     if (1 + starterHydrationDouble === 0) {
+    if (1 + starterHydrationDouble === 0) {
         return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
     }
 
@@ -55,12 +67,10 @@ function calculateRecipe(
     const finalStarterWeight = flourFromStarter + waterFromStarter;
     const saltWeight = totalFlourWeight * saltPercentageDouble;
 
-    // Round to the nearest whole number
     const round = (num) => {
-        if (isNaN(num) || !isFinite(num)) return 0; // Handle potential NaN or Infinity
-        return Math.round(num); // Changed to round to the nearest whole number
+        if (isNaN(num) || !isFinite(num)) return 0;
+        return Math.round(num * 10) / 10;
     }
-
 
     return {
         flourWeight: round(finalFlourWeight),
@@ -70,26 +80,96 @@ function calculateRecipe(
     };
 }
 
-
 function RecipeCalculator() {
-    // State for inputs with your desired defaults
-    const [targetDoughWeight, setTargetDoughWeight] = useState('1500'); // Default: 1500
-    const [hydrationPercentage, setHydrationPercentage] = useState('65'); // Default: 65
-    const [starterPercentage, setStarterPercentage] = useState('15');   // Default: 15
-    const [starterHydration, setStarterHydration] = useState('100');  // Default: 100
-    const [saltPercentage, setSaltPercentage] = useState('2');       // Default: 2
+    const initialInputs = {
+        targetDoughWeight: '1500',
+        hydrationPercentage: '65',
+        starterPercentage: '15',
+        starterHydration: '100',
+        saltPercentage: '2',
+    };
 
-    // State for results
+    const [targetDoughWeight, setTargetDoughWeight] = useState(initialInputs.targetDoughWeight);
+    const [hydrationPercentage, setHydrationPercentage] = useState(initialInputs.hydrationPercentage);
+    const [starterPercentage, setStarterPercentage] = useState(initialInputs.starterPercentage);
+    const [starterHydration, setStarterHydration] = useState(initialInputs.starterHydration);
+    const [saltPercentage, setSaltPercentage] = useState(initialInputs.saltPercentage);
+
     const [results, setResults] = useState({
         flourWeight: 0,
         waterWeight: 0,
         starterWeight: 0,
         saltWeight: 0
     });
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Effect to recalculate when inputs change
+    const setAllInputs = useCallback((data) => {
+        setTargetDoughWeight(String(data.targetDoughWeight || initialInputs.targetDoughWeight));
+        setHydrationPercentage(String(data.hydrationPercentage || initialInputs.hydrationPercentage));
+        setStarterPercentage(String(data.starterPercentage || initialInputs.starterPercentage));
+        setStarterHydration(String(data.starterHydration || initialInputs.starterHydration));
+        setSaltPercentage(String(data.saltPercentage || initialInputs.saltPercentage));
+    }, []); // initialInputs is stable, so no need to add it as a dependency
+
     useEffect(() => {
-        // Ensure values are treated as numbers for calculation; use 0 if input is empty or invalid
+        setIsLoading(true);
+        console.log(`Workspaceing from: <span class="math-inline">\{API\_BASE\_URL\}/api/recipe/</span>{currentUserId}`); // Log the URL
+        fetch(`<span class="math-inline">\{API\_BASE\_URL\}/api/recipe/</span>{currentUserId}`)
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(data => {
+                console.log("Fetched data:", data);
+                setAllInputs(data);
+            })
+            .catch(error => {
+                console.error("Error fetching recipe data:", error);
+                setAllInputs(initialInputs); // Fallback to initial defaults
+            })
+            .finally(() => {
+                setIsLoading(false);
+            });
+    }, [setAllInputs]);
+
+    useEffect(() => {
+        if (isLoading) return;
+
+        const inputsToSave = {
+            targetDoughWeight,
+            hydrationPercentage,
+            starterPercentage,
+            starterHydration,
+            saltPercentage,
+        };
+        console.log(`Posting to: <span class="math-inline">\{API\_BASE\_URL\}/api/recipe/</span>{currentUserId}`); // Log the URL
+        fetch(`<span class="math-inline">\{API\_BASE\_URL\}/api/recipe/</span>{currentUserId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(inputsToSave),
+        })
+        .then(res => {
+            if (!res.ok) {
+                // If response is not OK, try to parse error message from backend if it's JSON
+                return res.json().then(errData => {
+                    throw new Error(`HTTP error! status: ${res.status}, message: ${errData.message || 'Unknown error'}`);
+                }).catch(() => {
+                    // If error response is not JSON, throw generic error
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                });
+            }
+            return res.json();
+        })
+        .then(data => console.log("Save response:", data.message))
+        .catch(error => console.error("Error saving recipe data:", error));
+
+    }, [targetDoughWeight, hydrationPercentage, starterPercentage, starterHydration, saltPercentage, isLoading]);
+
+    useEffect(() => {
         const weight = parseFloat(targetDoughWeight) || 0;
         const hydration = parseFloat(hydrationPercentage) || 0;
         const starter = parseFloat(starterPercentage) || 0;
@@ -108,7 +188,13 @@ function RecipeCalculator() {
 
     const totalCalculatedWeight = results.flourWeight + results.waterWeight + results.starterWeight + results.saltWeight;
 
+    if (isLoading) {
+        return <div className="recipe-calculator"><p>Loading recipe...</p></div>;
+    }
+
     return (
+        // ... JSX for inputs and results remains the same ...
+        // (Make sure this part is identical to your last working version of the JSX)
         <div className="recipe-calculator">
             <h2>Sourdough Recipe Calculator</h2>
 
@@ -175,7 +261,7 @@ function RecipeCalculator() {
                 <div className="result-item"><span>Salt:</span> <span>{results.saltWeight} g</span></div>
                 <div className="result-item total">
                     <strong>Total:</strong>
-                    <strong>{isNaN(totalCalculatedWeight) ? 0 : totalCalculatedWeight} g</strong>
+                    <strong>{isNaN(totalCalculatedWeight) ? 0 : totalCalculatedWeight.toFixed(1)} g</strong>
                 </div>
             </div>
         </div>
