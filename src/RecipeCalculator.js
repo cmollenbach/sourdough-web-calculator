@@ -1,10 +1,11 @@
-// src/RecipeCalculator.js
+// sourdough-web-calculator/src/RecipeCalculator.js
 import React, { useState, useEffect, useCallback } from 'react';
 import './RecipeCalculator.css';
 
 const USER_ID_KEY = 'sourdoughAppUserId';
 
 // This will be your Render backend URL when deployed, or localhost for local development
+// It's read from an environment variable set by Netlify (or defaults for local dev)
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
 
 const getUserId = () => {
@@ -16,9 +17,9 @@ const getUserId = () => {
     return userId;
 };
 
+// Define currentUserId in the module scope so it's accessible to useEffect dependency arrays
 const currentUserId = getUserId();
 
-// ... (calculateRecipe function remains the same) ...
 function calculateRecipe(
     targetDoughWeight,
     hydrationPercentage,
@@ -26,7 +27,6 @@ function calculateRecipe(
     starterHydration,
     saltPercentage
 ) {
-    // Prevent division by zero and negative weights
     if (targetDoughWeight <= 0 || hydrationPercentage < 0 || starterPercentage < 0 || starterHydration < 0 || saltPercentage < 0) {
         if (targetDoughWeight <= 0) {
             return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
@@ -42,17 +42,19 @@ function calculateRecipe(
     if (isNaN(hydrationPercentageDouble) || isNaN(starterPercentageDouble) || isNaN(starterHydrationDouble) || isNaN(saltPercentageDouble)) {
         return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
     }
-
+    
     if (1 + hydrationPercentageDouble === 0) {
-        return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
+         return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
     }
 
     const totalWeightWithoutSalt =
         targetDoughWeightDouble / (1 + saltPercentageDouble * (1 / (1 + hydrationPercentageDouble)));
 
-    const totalFlourWeight = totalWeightWithoutSalt / (1 + hydrationPercentageDouble);
+    let totalFlourWeight = totalWeightWithoutSalt / (1 + hydrationPercentageDouble);
+    if (isNaN(totalFlourWeight) || !isFinite(totalFlourWeight)) totalFlourWeight = 0;
 
-    if (1 + starterHydrationDouble === 0) {
+
+     if (1 + starterHydrationDouble === 0) {
         return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
     }
 
@@ -109,12 +111,12 @@ function RecipeCalculator() {
         setStarterPercentage(String(data.starterPercentage || initialInputs.starterPercentage));
         setStarterHydration(String(data.starterHydration || initialInputs.starterHydration));
         setSaltPercentage(String(data.saltPercentage || initialInputs.saltPercentage));
-    }, []); // initialInputs is stable, so no need to add it as a dependency
+    }, [initialInputs]); // Added initialInputs to dependency array
 
     useEffect(() => {
         setIsLoading(true);
-        console.log(`Workspaceing from: <span class="math-inline">\{API\_BASE\_URL\}/api/recipe/</span>{currentUserId}`); // Log the URL
-        fetch(`<span class="math-inline">\{API\_BASE\_URL\}/api/recipe/</span>{currentUserId}`)
+        console.log(`Workspaceing from: ${API_BASE_URL}/api/recipe/${currentUserId}`); // Corrected escape characters
+        fetch(`${API_BASE_URL}/api/recipe/${currentUserId}`)
             .then(res => {
                 if (!res.ok) {
                     throw new Error(`HTTP error! status: ${res.status}`);
@@ -127,12 +129,12 @@ function RecipeCalculator() {
             })
             .catch(error => {
                 console.error("Error fetching recipe data:", error);
-                setAllInputs(initialInputs); // Fallback to initial defaults
+                setAllInputs(initialInputs);
             })
             .finally(() => {
                 setIsLoading(false);
             });
-    }, [setAllInputs]);
+    }, [setAllInputs, initialInputs, API_BASE_URL, currentUserId]); // Added initialInputs, API_BASE_URL, currentUserId to dependency array
 
     useEffect(() => {
         if (isLoading) return;
@@ -144,8 +146,8 @@ function RecipeCalculator() {
             starterHydration,
             saltPercentage,
         };
-        console.log(`Posting to: <span class="math-inline">\{API\_BASE\_URL\}/api/recipe/</span>{currentUserId}`); // Log the URL
-        fetch(`<span class="math-inline">\{API\_BASE\_URL\}/api/recipe/</span>{currentUserId}`, {
+        console.log(`Posting to: ${API_BASE_URL}/api/recipe/${currentUserId}`); // Corrected escape characters
+        fetch(`${API_BASE_URL}/api/recipe/${currentUserId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -154,11 +156,9 @@ function RecipeCalculator() {
         })
         .then(res => {
             if (!res.ok) {
-                // If response is not OK, try to parse error message from backend if it's JSON
                 return res.json().then(errData => {
                     throw new Error(`HTTP error! status: ${res.status}, message: ${errData.message || 'Unknown error'}`);
                 }).catch(() => {
-                    // If error response is not JSON, throw generic error
                     throw new Error(`HTTP error! status: ${res.status}`);
                 });
             }
@@ -167,7 +167,7 @@ function RecipeCalculator() {
         .then(data => console.log("Save response:", data.message))
         .catch(error => console.error("Error saving recipe data:", error));
 
-    }, [targetDoughWeight, hydrationPercentage, starterPercentage, starterHydration, saltPercentage, isLoading]);
+    }, [targetDoughWeight, hydrationPercentage, starterPercentage, starterHydration, saltPercentage, isLoading, API_BASE_URL, currentUserId]); // Added API_BASE_URL, currentUserId to dependency array
 
     useEffect(() => {
         const weight = parseFloat(targetDoughWeight) || 0;
@@ -193,8 +193,6 @@ function RecipeCalculator() {
     }
 
     return (
-        // ... JSX for inputs and results remains the same ...
-        // (Make sure this part is identical to your last working version of the JSX)
         <div className="recipe-calculator">
             <h2>Sourdough Recipe Calculator</h2>
 
