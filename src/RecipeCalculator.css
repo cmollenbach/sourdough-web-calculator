@@ -1,0 +1,93 @@
+/* src/RecipeCalculator.css */
+.recipe-calculator {
+    font-family: sans-serif;
+    width: 450px; /* Increased width a bit for two columns */
+    margin: 20px auto;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.recipe-calculator h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 25px; /* Added more margin */
+}
+
+.input-group { /* General styling for input groups if not two-column */
+    margin-bottom: 15px;
+}
+
+.input-group label { /* General label styling */
+    display: block;
+    margin-bottom: 5px;
+    color: #555;
+    font-size: 0.9em; /* Slightly smaller label */
+}
+
+.input-group input { /* General input styling */
+    width: calc(100% - 22px); /* Account for padding and border */
+    padding: 8px 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+    text-align: right; /* Right-align text in all number inputs */
+}
+
+/* Styles for two-column layout */
+.input-group.two-column {
+    display: flex;
+    align-items: center;
+    justify-content: space-between; /* Puts space between label and input */
+    margin-bottom: 12px;
+}
+
+.input-group.two-column label {
+    flex-grow: 1; /* Allows label to take up space */
+    margin-bottom: 0;
+    padding-right: 10px; /* Space before the input */
+    text-align: left; /* Keep labels left-aligned */
+}
+
+.input-group.two-column input {
+    flex-basis: 100px; /* Give input a specific base width */
+    flex-grow: 0; /* Don't let it grow beyond its basis */
+    width: 100px; /* Explicit width */
+}
+
+.results-group {
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px dashed #eee;
+}
+
+.results-group h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.result-item {
+    display: flex;
+    justify-content: space-between; /* Label on left, value on right */
+    padding: 6px 0; /* A bit of vertical padding */
+    font-size: 0.95em;
+    color: #444;
+}
+
+.result-item span:last-child {
+    text-align: right; /* Ensure the numeric value is right-aligned */
+    font-weight: 500;
+}
+
+.result-item.total {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+}
+
+.result-item.total strong {
+    color: #000;
+    font-weight: bold;
+}
