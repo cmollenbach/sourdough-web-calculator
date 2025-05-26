@@ -1,11 +1,8 @@
 // sourdough-web-calculator/src/RecipeCalculator.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react'; // Added useMemo
 import './RecipeCalculator.css';
 
 const USER_ID_KEY = 'sourdoughAppUserId';
-
-// This will be your Render backend URL when deployed, or localhost for local development
-// It's read from an environment variable set by Netlify (or defaults for local dev)
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
 
 const getUserId = () => {
@@ -17,8 +14,16 @@ const getUserId = () => {
     return userId;
 };
 
-// Define currentUserId in the module scope so it's accessible to useEffect dependency arrays
 const currentUserId = getUserId();
+
+// Moved initialInputs outside the component so it's a stable reference
+const INITIAL_INPUTS = {
+    targetDoughWeight: '1500',
+    hydrationPercentage: '65',
+    starterPercentage: '15',
+    starterHydration: '100',
+    saltPercentage: '2',
+};
 
 function calculateRecipe(
     targetDoughWeight,
@@ -83,19 +88,12 @@ function calculateRecipe(
 }
 
 function RecipeCalculator() {
-    const initialInputs = {
-        targetDoughWeight: '1500',
-        hydrationPercentage: '65',
-        starterPercentage: '15',
-        starterHydration: '100',
-        saltPercentage: '2',
-    };
-
-    const [targetDoughWeight, setTargetDoughWeight] = useState(initialInputs.targetDoughWeight);
-    const [hydrationPercentage, setHydrationPercentage] = useState(initialInputs.hydrationPercentage);
-    const [starterPercentage, setStarterPercentage] = useState(initialInputs.starterPercentage);
-    const [starterHydration, setStarterHydration] = useState(initialInputs.starterHydration);
-    const [saltPercentage, setSaltPercentage] = useState(initialInputs.saltPercentage);
+    // Use the stable INITIAL_INPUTS for useState initialization
+    const [targetDoughWeight, setTargetDoughWeight] = useState(INITIAL_INPUTS.targetDoughWeight);
+    const [hydrationPercentage, setHydrationPercentage] = useState(INITIAL_INPUTS.hydrationPercentage);
+    const [starterPercentage, setStarterPercentage] = useState(INITIAL_INPUTS.starterPercentage);
+    const [starterHydration, setStarterHydration] = useState(INITIAL_INPUTS.starterHydration);
+    const [saltPercentage, setSaltPercentage] = useState(INITIAL_INPUTS.saltPercentage);
 
     const [results, setResults] = useState({
         flourWeight: 0,
@@ -105,17 +103,24 @@ function RecipeCalculator() {
     });
     const [isLoading, setIsLoading] = useState(true);
 
+    // setAllInputs now correctly uses INITIAL_INPUTS from outside, so it doesn't need it in its own deps for this reason.
+    // However, to satisfy ESLint about stable function references when it's passed to useEffect,
+    // and because INITIAL_INPUTS is now truly constant from the module scope,
+    // the dependency array for useCallback can be empty if INITIAL_INPUTS is guaranteed not to change.
+    // Or, more simply, if initialInputs was a prop or state, then the useMemo approach suggested by ESLint for initialInputs
+    // would be for defining initialInputs inside RecipeCalculator.
+    // Since we moved INITIAL_INPUTS outside, its reference is stable.
     const setAllInputs = useCallback((data) => {
-        setTargetDoughWeight(String(data.targetDoughWeight || initialInputs.targetDoughWeight));
-        setHydrationPercentage(String(data.hydrationPercentage || initialInputs.hydrationPercentage));
-        setStarterPercentage(String(data.starterPercentage || initialInputs.starterPercentage));
-        setStarterHydration(String(data.starterHydration || initialInputs.starterHydration));
-        setSaltPercentage(String(data.saltPercentage || initialInputs.saltPercentage));
-    }, [initialInputs]); // Added initialInputs to dependency array
+        setTargetDoughWeight(String(data.targetDoughWeight || INITIAL_INPUTS.targetDoughWeight));
+        setHydrationPercentage(String(data.hydrationPercentage || INITIAL_INPUTS.hydrationPercentage));
+        setStarterPercentage(String(data.starterPercentage || INITIAL_INPUTS.starterPercentage));
+        setStarterHydration(String(data.starterHydration || INITIAL_INPUTS.starterHydration));
+        setSaltPercentage(String(data.saltPercentage || INITIAL_INPUTS.saltPercentage));
+    }, []); // Empty dependency array because INITIAL_INPUTS is now a module-level constant
 
     useEffect(() => {
         setIsLoading(true);
-        console.log(`Workspaceing from: ${API_BASE_URL}/api/recipe/${currentUserId}`); // Corrected escape characters
+        console.log(`Workspaceing from: ${API_BASE_URL}/api/recipe/${currentUserId}`);
         fetch(`${API_BASE_URL}/api/recipe/${currentUserId}`)
             .then(res => {
                 if (!res.ok) {
@@ -129,12 +134,12 @@ function RecipeCalculator() {
             })
             .catch(error => {
                 console.error("Error fetching recipe data:", error);
-                setAllInputs(initialInputs);
+                setAllInputs(INITIAL_INPUTS); // Use the stable constant
             })
             .finally(() => {
                 setIsLoading(false);
             });
-    }, [setAllInputs, initialInputs, API_BASE_URL, currentUserId]); // Added initialInputs, API_BASE_URL, currentUserId to dependency array
+    }, [setAllInputs]); // Removed API_BASE_URL, currentUserId, INITIAL_INPUTS as they are stable module/component constants
 
     useEffect(() => {
         if (isLoading) return;
@@ -146,7 +151,7 @@ function RecipeCalculator() {
             starterHydration,
             saltPercentage,
         };
-        console.log(`Posting to: ${API_BASE_URL}/api/recipe/${currentUserId}`); // Corrected escape characters
+        console.log(`Posting to: ${API_BASE_URL}/api/recipe/${currentUserId}`);
         fetch(`${API_BASE_URL}/api/recipe/${currentUserId}`, {
             method: 'POST',
             headers: {
@@ -167,7 +172,7 @@ function RecipeCalculator() {
         .then(data => console.log("Save response:", data.message))
         .catch(error => console.error("Error saving recipe data:", error));
 
-    }, [targetDoughWeight, hydrationPercentage, starterPercentage, starterHydration, saltPercentage, isLoading, API_BASE_URL, currentUserId]); // Added API_BASE_URL, currentUserId to dependency array
+    }, [targetDoughWeight, hydrationPercentage, starterPercentage, starterHydration, saltPercentage, isLoading]); // Removed API_BASE_URL, currentUserId
 
     useEffect(() => {
         const weight = parseFloat(targetDoughWeight) || 0;
@@ -193,6 +198,7 @@ function RecipeCalculator() {
     }
 
     return (
+        // JSX structure remains the same
         <div className="recipe-calculator">
             <h2>Sourdough Recipe Calculator</h2>
 
