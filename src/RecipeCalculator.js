@@ -21,14 +21,13 @@ const INITIAL_RECIPE_FIELDS = {
     description: '',
     targetDoughWeight: '1000',
     hydrationPercentage: '70',
-    saltPercentage: '2',
-    steps: [] // Initially empty, will be populated by CLEAR_FORM or loaded recipe
+    saltPercentage: '2.0', // Updated to allow for decimal
+    steps: []
 };
 
 const DEFAULT_LEVAIN_STEP_TEMPLATE = {
-    // step_id will come from predefinedSteps
-    step_name: LEVAIN_BUILD_STEP_NAME, // Used for matching
-    duration_override: null, // Or a default from predefinedSteps
+    step_name: LEVAIN_BUILD_STEP_NAME,
+    duration_override: null,
     notes: '',
     target_temperature_celsius: null,
     contribution_pct: 20,
@@ -54,16 +53,16 @@ function recipeReducer(state, action) {
     switch (action.type) {
         case 'SET_FIELD':
             return { ...state, [action.field]: action.payload };
-        case 'SET_RECIPE_FIELD': // For individual form fields related to the recipe object
+        case 'SET_RECIPE_FIELD':
             return { ...state, [action.field]: action.payload, feedbackMessage: { type: '', text: '' } };
-        case 'SET_FULL_RECIPE_FORM': // When loading a full recipe
+        case 'SET_FULL_RECIPE_FORM':
             return {
                 ...state,
                 recipe_name: action.payload.recipeData.recipe_name,
                 description: action.payload.recipeData.description,
                 targetDoughWeight: String(action.payload.recipeData.targetDoughWeight),
                 hydrationPercentage: String(action.payload.recipeData.hydrationPercentage),
-                saltPercentage: String(action.payload.recipeData.saltPercentage),
+                saltPercentage: String(parseFloat(action.payload.recipeData.saltPercentage).toFixed(1)), // Ensure one decimal place
                 steps: action.payload.recipeData.steps,
                 currentRecipeId: action.payload.recipeData.recipe_id || null,
                 selectedRecipeToLoad: String(action.payload.recipeData.recipe_id || ''),
@@ -104,7 +103,7 @@ function recipeReducer(state, action) {
                     defaultNewStepData.target_hydration = DEFAULT_LEVAIN_STEP_TEMPLATE.target_hydration;
                     defaultNewStepData.duration_override = DEFAULT_LEVAIN_STEP_TEMPLATE.duration_override ?? firstPredefined.defaultDurationMinutes;
                 } else if (firstPredefined.step_id === state.bulkFermentStepIdDynamic) {
-                    defaultNewStepData.stretch_fold_interval_minutes = 30; 
+                    defaultNewStepData.stretch_fold_interval_minutes = 30;
                 }
             }
 
@@ -144,10 +143,10 @@ function recipeReducer(state, action) {
                 const levainTemplate = state.predefinedSteps.find(ps => ps.step_id === state.levainStepIdDynamic);
                 if (levainTemplate) {
                      initialSteps.push({
-                        ...DEFAULT_LEVAIN_STEP_TEMPLATE, // Spread defaults first
+                        ...DEFAULT_LEVAIN_STEP_TEMPLATE,
                         step_id: levainTemplate.step_id,
-                        step_name: levainTemplate.step_name, // Override name with actual predefined name
-                        duration_override: levainTemplate.defaultDurationMinutes ?? DEFAULT_LEVAIN_STEP_TEMPLATE.duration_override, // Prefer predefined default duration
+                        step_name: levainTemplate.step_name,
+                        duration_override: levainTemplate.defaultDurationMinutes ?? DEFAULT_LEVAIN_STEP_TEMPLATE.duration_override,
                         temp_client_id: Date.now(),
                         step_order: 1,
                      });
@@ -155,8 +154,9 @@ function recipeReducer(state, action) {
             }
             return {
                 ...state,
-                ...INITIAL_RECIPE_FIELDS, // Spread the base initial fields
-                steps: initialSteps,       // Set the newly created initial steps
+                ...INITIAL_RECIPE_FIELDS,
+                saltPercentage: parseFloat(INITIAL_RECIPE_FIELDS.saltPercentage).toFixed(1), // Ensure one decimal on clear
+                steps: initialSteps,
                 currentRecipeId: null,
                 selectedRecipeToLoad: '',
                 feedbackMessage: { type: '', text: '' },
@@ -202,7 +202,7 @@ function calculateRecipe(targetDoughWeight, hydrationPercentage, saltPercentage,
     let finalFlourWeight = 0;
     let finalWaterWeight = 0;
     let finalStarterWeight = 0;
-    let saltWeight = 0;
+    let saltWeightValue = 0; // Renamed to avoid conflict
 
     if (starterPercentageNum > 0 && (1 + starterHydrationNum) > 0) {
         finalStarterWeight = targetDoughWeightNum * starterPercentageNum;
@@ -217,7 +217,7 @@ function calculateRecipe(targetDoughWeight, hydrationPercentage, saltPercentage,
         }
 
         finalFlourWeight = totalFlourInRecipe - flourInStarter;
-        saltWeight = totalFlourInRecipe * saltPercentageNum;
+        saltWeightValue = totalFlourInRecipe * saltPercentageNum; // Use renamed variable
 
         const totalWaterInRecipe = totalFlourInRecipe * hydrationPercentageNum;
         finalWaterWeight = totalWaterInRecipe - waterInStarter;
@@ -226,7 +226,7 @@ function calculateRecipe(targetDoughWeight, hydrationPercentage, saltPercentage,
          if (totalFlourDenominator !== 0) {
             finalFlourWeight = targetDoughWeightNum / totalFlourDenominator;
             finalWaterWeight = finalFlourWeight * hydrationPercentageNum;
-            saltWeight = finalFlourWeight * saltPercentageNum;
+            saltWeightValue = finalFlourWeight * saltPercentageNum; // Use renamed variable
         }
     }
 
@@ -234,14 +234,19 @@ function calculateRecipe(targetDoughWeight, hydrationPercentage, saltPercentage,
         if (isNaN(num) || !isFinite(num)) return 0;
         return Math.round(num);
     }
+     const roundSalt = (num) => {
+        if (isNaN(num) || !isFinite(num)) return 0;
+        return parseFloat(num.toFixed(1)); // Keep one decimal for salt
+    }
 
-    const calculatedTotal = round(finalFlourWeight) + round(finalWaterWeight) + round(finalStarterWeight) + round(saltWeight);
+
+    const calculatedTotal = round(finalFlourWeight) + round(finalWaterWeight) + round(finalStarterWeight) + roundSalt(saltWeightValue);
 
     return {
         flourWeight: round(finalFlourWeight),
         waterWeight: round(finalWaterWeight),
         starterWeight: round(finalStarterWeight),
-        saltWeight: round(saltWeight),
+        saltWeight: roundSalt(saltWeightValue), // Use renamed variable
         totalWeight: round(calculatedTotal)
     };
 }
@@ -256,13 +261,16 @@ function RecipeCalculator() {
 
     const clearFeedback = useCallback(() => dispatch({ type: 'CLEAR_FEEDBACK' }), []);
 
-    const recipeFormState = { // For passing to RecipeFields
-        recipe_name: state.recipe_name,
-        description: state.description,
+    const recipeInputFields = { // For RecipeFields - Inputs section
         targetDoughWeight: state.targetDoughWeight,
         hydrationPercentage: state.hydrationPercentage,
         saltPercentage: state.saltPercentage,
     };
+     const recipeManagementFields = { // For RecipeFields - Manage Recipes section
+        recipe_name: state.recipe_name,
+        description: state.description,
+    };
+
 
     const handleRecipeFieldChange = (field, value) => {
         dispatch({ type: 'SET_RECIPE_FIELD', field, payload: value });
@@ -279,10 +287,10 @@ function RecipeCalculator() {
                 contribution_pct: step.contribution_pct != null ? Number(step.contribution_pct) : null,
                 target_hydration: step.target_hydration != null ? Number(step.target_hydration) : null,
                 stretch_fold_interval_minutes: step.stretch_fold_interval_minutes != null ? Number(step.stretch_fold_interval_minutes) : null,
-                temp_client_id: step.recipe_step_id ? null : (step.temp_client_id || Date.now() + index + Math.random()), // Ensure unique client ID
+                temp_client_id: step.recipe_step_id ? null : (step.temp_client_id || Date.now() + index + Math.random()),
             };
         });
-        return { ...recipeData, steps: processedSteps };
+        return { ...recipeData, steps: processedSteps, saltPercentage: parseFloat(recipeData.saltPercentage).toFixed(1) };
     }, []);
 
 
@@ -317,7 +325,6 @@ function RecipeCalculator() {
 
     const fetchUserRecipesList = useCallback(async () => {
         if (!AuthService.isLoggedIn()) {
-             // This case is handled by the AuthService.isLoggedIn() useEffect now
             return;
         }
         dispatch({ type: 'SET_LOADING', field: 'isLoadingRecipes', payload: true });
@@ -339,41 +346,36 @@ function RecipeCalculator() {
     }, [clearFeedback, state.currentRecipeId]);
 
 
-    // Effect for login/logout status changes
     useEffect(() => {
         if (AuthService.isLoggedIn()) {
-            fetchAndSetPredefinedSteps(); // Fetch predefined steps on login
-            fetchUserRecipesList();      // Fetch user recipes on login
+            fetchAndSetPredefinedSteps();
+            fetchUserRecipesList();
         } else {
             dispatch({ type: 'SET_FIELD', field: 'savedRecipes', payload: [] });
             dispatch({ type: 'SET_FIELD', field: 'predefinedSteps', payload: [] });
             dispatch({ type: 'SET_FIELD', field: 'levainStepIdDynamic', payload: null });
             dispatch({ type: 'SET_FIELD', field: 'bulkFermentStepIdDynamic', payload: null });
-            handleClearForm(); // Clear everything if logged out
+            handleClearForm();
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [AuthService.isLoggedIn(), handleClearForm, fetchUserRecipesList, fetchAndSetPredefinedSteps]);
+    }, [handleClearForm, fetchUserRecipesList, fetchAndSetPredefinedSteps]);
 
 
-    // Effect for initial form setup with default Levain step,
-    // This should run AFTER predefined steps are loaded.
     useEffect(() => {
         if (
             AuthService.isLoggedIn() &&
             state.predefinedSteps.length > 0 &&
             state.levainStepIdDynamic &&
-            !state.currentRecipeId &&    // No specific recipe loaded
-            state.steps.length === 0     // And form is currently empty of steps
+            !state.currentRecipeId &&
+            state.steps.length === 0
         ) {
-            handleClearForm(); // This will now use the loaded predefinedSteps and levainStepIdDynamic
+            handleClearForm();
         }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [
-        state.predefinedSteps, // Trigger when predefinedSteps are loaded
-        state.levainStepIdDynamic, // Trigger when levainStepIdDynamic is set
-        state.currentRecipeId,     // Trigger when currentRecipeId changes (e.g., a recipe is loaded/unloaded)
-        // AuthService.isLoggedIn() // Already handled by the effect above which triggers this one via predefinedSteps
-        // state.steps.length // Only if we want to re-trigger if steps become empty later
+        state.predefinedSteps,
+        state.levainStepIdDynamic,
+        state.currentRecipeId,
+        handleClearForm, // Added dependency
+        state.steps.length // Added dependency
     ]);
 
 
@@ -393,14 +395,12 @@ function RecipeCalculator() {
         clearFeedback();
         const recipeIdToLoad = event.target.value;
         
+        dispatch({ type: 'SET_FIELD', field: 'selectedRecipeToLoad', payload: recipeIdToLoad });
 
         if (!recipeIdToLoad) {
-            dispatch({ type: 'SET_FIELD', field: 'selectedRecipeToLoad', payload: recipeIdToLoad });
             handleClearForm();
             return;
         }
-        // Set selectedRecipeToLoad immediately for responsive UI
-        dispatch({ type: 'SET_FIELD', field: 'selectedRecipeToLoad', payload: recipeIdToLoad });
 
         dispatch({ type: 'SET_LOADING', field: 'isLoadingRecipes', payload: true });
         try {
@@ -410,7 +410,7 @@ function RecipeCalculator() {
         } catch (error) {
             console.error("RecipeCalculator: Error fetching specific recipe:", error);
             dispatch({ type: 'SET_FEEDBACK', payload: { type: 'error', text: `Failed to load recipe: ${error.message}` } });
-            handleClearForm(); // Clear form on error loading specific recipe
+            handleClearForm();
         } finally {
             dispatch({ type: 'SET_LOADING', field: 'isLoadingRecipes', payload: false });
         }
@@ -452,7 +452,7 @@ function RecipeCalculator() {
             hydrationPercentage: parseFloat(state.hydrationPercentage),
             saltPercentage: parseFloat(state.saltPercentage),
             steps: state.steps.map(step => ({
-                recipe_step_id: step.recipe_step_id, // Important for PUT updates
+                recipe_step_id: step.recipe_step_id,
                 step_id: Number(step.step_id),
                 step_order: Number(step.step_order),
                 duration_override: step.duration_override != null ? Number(step.duration_override) : null,
@@ -479,15 +479,14 @@ function RecipeCalculator() {
             if (result.recipe && result.recipe.recipe_id) { 
                 const processedData = processLoadedRecipeData(result.recipe, state.predefinedSteps);
                 dispatch({ type: 'SET_FULL_RECIPE_FORM', payload: { recipeData: processedData } });
-            } else if (!state.currentRecipeId) { // New recipe saved, but full data not returned
-                // Find the newly saved recipe in the refreshed list or clear
-                const newlySaved = state.savedRecipes.find(r => r.recipe_name === recipePayload.recipe_name && !r.recipe_id); // Heuristic
+            } else if (!state.currentRecipeId) {
+                const newlySaved = state.savedRecipes.find(r => r.recipe_name === recipePayload.recipe_name && !r.recipe_id);
                 if(newlySaved && newlySaved.recipe_id){
                     dispatch({ type: 'SET_FIELD', field: 'selectedRecipeToLoad', payload: String(newlySaved.recipe_id) });
                 } else {
                     handleClearForm();
                 }
-            } else { // Update happened, ensure selectedRecipeToLoad is still correct
+            } else {
                  dispatch({ type: 'SET_FIELD', field: 'selectedRecipeToLoad', payload: previousSelectedRecipe });
             }
 
@@ -561,52 +560,65 @@ function RecipeCalculator() {
     }
 
     return (
-        <div className={styles.recipeCalculatorLayout}>
-            <div className={styles.recipeDetailsColumn}>
-                <h2 className={styles.mainTitle}>Sourdough Recipe Calculator</h2>
-                
-                {state.feedbackMessage.text && (
-                    <p className={`${styles.feedbackMessage} ${state.feedbackMessage.type === 'error' ? styles.feedbackMessageError : (state.feedbackMessage.type === 'success' ? styles.feedbackMessageSuccess : styles.feedbackMessageInfo)}`}>
-                        {state.feedbackMessage.text}
-                    </p>
-                )}
+        <>
+            <h2 className={styles.mainTitle}>Sourdough Recipe Calculator</h2>
+            <div className={styles.recipeCalculatorLayout}>
+                <div className={styles.recipeDetailsColumn}>
+                    
+                    {state.feedbackMessage.text && (
+                        <p className={`${styles.feedbackMessage} ${state.feedbackMessage.type === 'error' ? styles.feedbackMessageError : (state.feedbackMessage.type === 'success' ? styles.feedbackMessageSuccess : styles.feedbackMessageInfo)}`}>
+                            {state.feedbackMessage.text}
+                        </p>
+                    )}
 
-                <RecipeResults results={calculationResults} /> 
-                
-                <RecipeFields
-                    recipe={recipeFormState}
-                    onFieldChange={handleRecipeFieldChange}
+                    <div className={styles.inputsSection}>
+                        <h3>Inputs</h3>
+                        <RecipeFields
+                            recipe={recipeInputFields} // Pass only input-related fields
+                            onFieldChange={handleRecipeFieldChange}
+                            isSaving={state.isSaving}
+                            clearFeedback={clearFeedback}
+                            isInputsSection={true} // Flag to render only relevant fields
+                        />
+                    </div>
+                    
+                    <RecipeResults results={calculationResults} /> 
+                    
+                    <div className={styles.manageRecipesSection}>
+                         <RecipeManagementActions 
+                            recipeName={recipeManagementFields.recipe_name}
+                            description={recipeManagementFields.description}
+                            onRecipeNameChange={(value) => handleRecipeFieldChange('recipe_name', value)}
+                            onDescriptionChange={(value) => handleRecipeFieldChange('description', value)}
+                            savedRecipes={state.savedRecipes}
+                            selectedRecipeToLoad={state.selectedRecipeToLoad}
+                            onLoadRecipeChange={handleLoadRecipeChange}
+                            onSaveOrUpdate={handleSaveOrUpdateRecipe}
+                            onDelete={handleDeleteRecipe}
+                            onClearForm={handleClearForm}
+                            isLoadingRecipes={state.isLoadingRecipes}
+                            isSaving={state.isSaving}
+                            currentRecipeId={state.currentRecipeId}
+                            clearFeedback={clearFeedback}
+                        />
+                    </div>
+                </div>
+
+                <StepsColumn
+                    recipeSteps={state.steps}
+                    predefinedSteps={state.predefinedSteps}
+                    onStepChange={handleStepChange}
+                    onDeleteStep={handleDeleteStep}
+                    onAddStep={handleAddStep}
+                    onDragEnd={handleDragEnd}
+                    isLoadingPredefinedSteps={state.isLoadingPredefinedSteps}
                     isSaving={state.isSaving}
-                    clearFeedback={clearFeedback}
-                />
-                
-                <RecipeManagementActions 
-                    savedRecipes={state.savedRecipes}
-                    selectedRecipeToLoad={state.selectedRecipeToLoad}
-                    onLoadRecipeChange={handleLoadRecipeChange}
-                    onSaveOrUpdate={handleSaveOrUpdateRecipe}
-                    onDelete={handleDeleteRecipe}
-                    onClearForm={handleClearForm}
-                    isLoadingRecipes={state.isLoadingRecipes}
-                    isSaving={state.isSaving}
-                    currentRecipeId={state.currentRecipeId}
+                    bulkFermentStepId={state.bulkFermentStepIdDynamic}
+                    levainStepId={state.levainStepIdDynamic}
+                    getStepDnDId={getStepDnDId}
                 />
             </div>
-
-            <StepsColumn
-                recipeSteps={state.steps}
-                predefinedSteps={state.predefinedSteps}
-                onStepChange={handleStepChange}
-                onDeleteStep={handleDeleteStep}
-                onAddStep={handleAddStep}
-                onDragEnd={handleDragEnd}
-                isLoadingPredefinedSteps={state.isLoadingPredefinedSteps}
-                isSaving={state.isSaving}
-                bulkFermentStepId={state.bulkFermentStepIdDynamic}
-                levainStepId={state.levainStepIdDynamic}
-                getStepDnDId={getStepDnDId}
-            />
-        </div>
+        </>
     );
 }
 

@@ -2,9 +2,14 @@
 import React from 'react';
 import AuthService from '../services/AuthService';
 import styles from './RecipeCalculator.module.css';
+import RecipeFields from './RecipeFields'; // Import RecipeFields
 
 /**
  * @param {object} props
+ * @param {string} props.recipeName
+ * @param {string} props.description
+ * @param {function(string): void} props.onRecipeNameChange
+ * @param {function(string): void} props.onDescriptionChange
  * @param {Array<object>} props.savedRecipes
  * @param {string} props.selectedRecipeToLoad
  * @param {function(React.ChangeEvent<HTMLSelectElement>): void} props.onLoadRecipeChange
@@ -14,8 +19,13 @@ import styles from './RecipeCalculator.module.css';
  * @param {boolean} props.isLoadingRecipes
  * @param {boolean} props.isSaving
  * @param {string|null} props.currentRecipeId
+ * @param {function} props.clearFeedback
  */
 function RecipeManagementActions({
+    recipeName,
+    description,
+    onRecipeNameChange,
+    onDescriptionChange,
     savedRecipes,
     selectedRecipeToLoad,
     onLoadRecipeChange,
@@ -24,15 +34,38 @@ function RecipeManagementActions({
     onClearForm,
     isLoadingRecipes,
     isSaving,
-    currentRecipeId
+    currentRecipeId,
+    clearFeedback
 }) {
     if (!AuthService.isLoggedIn()) {
         return <p className={styles.authMessage}>Please login to save and load your recipes.</p>;
     }
 
+    const recipeDetailsForManage = {
+        recipe_name: recipeName,
+        description: description,
+    };
+    
+    const handleFieldChange = (field, value) => {
+        if (field === 'recipe_name') {
+            onRecipeNameChange(value);
+        } else if (field === 'description') {
+            onDescriptionChange(value);
+        }
+    };
+
     return (
         <div className={styles.recipeManagementGroup}>
-            <h3>Manage Recipes</h3>
+            <h3>Manage Recipe Details & Actions</h3>
+            
+            <RecipeFields
+                recipe={recipeDetailsForManage}
+                onFieldChange={handleFieldChange}
+                isSaving={isSaving}
+                clearFeedback={clearFeedback}
+                isManageSection={true} // Flag to render only these fields
+            />
+
             <div className={styles.inputGroup}>
                 <label htmlFor="loadRecipeSelect">Load Recipe:</label>
                 <select
@@ -54,7 +87,7 @@ function RecipeManagementActions({
                 )}
             </div>
 
-            <hr />
+            {/* <hr />  Removed hr as sections will provide separation */}
 
             <div className={`${styles.actionsGroup} ${styles.mainActions}`}>
                 <button onClick={onSaveOrUpdate} disabled={isSaving} className={styles.buttonWithSpinner}>
