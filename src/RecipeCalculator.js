@@ -1,247 +1,355 @@
 // src/RecipeCalculator.js
 import React, { useState, useEffect, useCallback } from 'react';
-import './RecipeCalculator.css'; // Assuming you have this CSS file
-import AuthService from './services/AuthService'; // Import AuthService
+import './RecipeCalculator.css'; 
+import AuthService from './services/AuthService';
 
-// API_BASE_URL should be consistent with how you've defined it elsewhere (e.g., in AuthService or LoginPage)
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3001';
 
-const INITIAL_INPUTS = {
-    targetDoughWeight: '1000', // Or your preferred defaults
-    hydrationPercentage: '70',
-    starterPercentage: '20',
-    starterHydration: '100',
-    saltPercentage: '2',
-    recipeName: 'My New Sourdough', // Default for a new, unsaved recipe
+const INITIAL_RECIPE_STATE = {
+    recipe_id: null,
+    recipe_name: 'My New Sourdough',
     description: '',
+    targetDoughWeight: '1000',
+    hydrationPercentage: '70',
+    saltPercentage: '2',
+    steps: [] 
 };
 
-// calculateRecipe function (assuming it's defined outside or imported, and remains the same)
-// function calculateRecipe(...) { ... }
-// For brevity, I'll assume calculateRecipe is available as it was before.
-// Make sure it's correctly defined or imported in your actual file.
+// This should ideally be dynamically found from predefinedSteps once loaded
+let LEVAIN_BUILD_STEP_ID_DYNAMIC = null; 
+
+const DEFAULT_LEVAIN_STEP_TEMPLATE = { // Used as a template
+    step_id: null, // Will be set from predefinedSteps
+    step_name: 'Levain Build', 
+    step_order: 1,
+    duration_override: null, 
+    notes: '',
+    target_temperature_celsius: null,
+    contribution_pct: 20,    
+    target_hydration: 100    
+};
+
 function calculateRecipe(
     targetDoughWeight,
     hydrationPercentage,
-    starterPercentage,
-    starterHydration,
-    saltPercentage
+    saltPercentage,
+    steps = [] 
 ) {
-    if (targetDoughWeight <= 0 || hydrationPercentage < 0 || starterPercentage < 0 || starterHydration < 0 || saltPercentage < 0) {
-        if (targetDoughWeight <= 0) {
-            return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
+    if (targetDoughWeight <= 0) {
+        return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: 0 };
+    }
+
+    const targetDoughWeightNum = parseFloat(targetDoughWeight);
+    const hydrationPercentageNum = parseFloat(hydrationPercentage) / 100.0;
+    const saltPercentageNum = parseFloat(saltPercentage) / 100.0;
+
+    const levainStep = steps.find(step => step.step_id === LEVAIN_BUILD_STEP_ID_DYNAMIC && step.contribution_pct != null && step.target_hydration != null);
+    
+    const starterPercentageNum = levainStep ? parseFloat(levainStep.contribution_pct) / 100.0 : 0;
+    const starterHydrationNum = levainStep ? parseFloat(levainStep.target_hydration) / 100.0 : 0;
+
+    if (isNaN(hydrationPercentageNum) || isNaN(starterPercentageNum) || isNaN(starterHydrationNum) || isNaN(saltPercentageNum)) {
+        return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: 0 };
+    }
+    if (1 + hydrationPercentageNum === 0) {
+         return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: 0 };
+    }
+    
+    let finalFlourWeight = 0;
+    let finalWaterWeight = 0;
+    let finalStarterWeight = 0;
+    let saltWeight = 0;
+
+    if (starterPercentageNum > 0 && (1 + starterHydrationNum) > 0) {
+        finalStarterWeight = targetDoughWeightNum * starterPercentageNum;
+        const flourInStarter = finalStarterWeight / (1 + starterHydrationNum);
+        const waterInStarter = finalStarterWeight - flourInStarter;
+        
+        const totalFlourNumerator = targetDoughWeightNum / (1 + saltPercentageNum);
+        const totalFlourDenominator = 1 + hydrationPercentageNum;
+        let totalFlourInRecipe = 0;
+        if (totalFlourDenominator !== 0) {
+            totalFlourInRecipe = totalFlourNumerator / totalFlourDenominator;
+        }
+        
+        finalFlourWeight = totalFlourInRecipe - flourInStarter;
+        saltWeight = totalFlourInRecipe * saltPercentageNum;
+        
+        const totalWaterInRecipe = totalFlourInRecipe * hydrationPercentageNum;
+        finalWaterWeight = totalWaterInRecipe - waterInStarter;
+    } else { 
+        const totalFlourDenominator = 1 + hydrationPercentageNum + saltPercentageNum;
+         if (totalFlourDenominator !== 0) {
+            finalFlourWeight = targetDoughWeightNum / totalFlourDenominator;
+            finalWaterWeight = finalFlourWeight * hydrationPercentageNum;
+            saltWeight = finalFlourWeight * saltPercentageNum;
         }
     }
-    const targetDoughWeightDouble = parseFloat(targetDoughWeight);
-    const hydrationPercentageDouble = parseFloat(hydrationPercentage) / 100.0;
-    const starterPercentageDouble = parseFloat(starterPercentage) / 100.0;
-    const starterHydrationDouble = parseFloat(starterHydration) / 100.0;
-    const saltPercentageDouble = parseFloat(saltPercentage) / 100.0;
-    if (isNaN(hydrationPercentageDouble) || isNaN(starterPercentageDouble) || isNaN(starterHydrationDouble) || isNaN(saltPercentageDouble)) {
-        return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
-    }
-    if (1 + hydrationPercentageDouble === 0) {
-         return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
-    }
-    const totalWeightWithoutSalt =
-        targetDoughWeightDouble / (1 + saltPercentageDouble * (1 / (1 + hydrationPercentageDouble)));
-    let totalFlourWeight = totalWeightWithoutSalt / (1 + hydrationPercentageDouble);
-    if (isNaN(totalFlourWeight) || !isFinite(totalFlourWeight)) totalFlourWeight = 0;
-     if (1 + starterHydrationDouble === 0) {
-        return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 };
-    }
-    const flourFromStarter =
-        (totalFlourWeight * starterPercentageDouble) / (1 + starterHydrationDouble);
-    const waterFromStarter = flourFromStarter * starterHydrationDouble;
-    const finalFlourWeight = totalFlourWeight - flourFromStarter;
-    const totalWaterWeight = totalWeightWithoutSalt - totalFlourWeight;
-    const finalWaterWeight = totalWaterWeight - waterFromStarter;
-    const finalStarterWeight = flourFromStarter + waterFromStarter;
-    const saltWeight = totalFlourWeight * saltPercentageDouble;
+    
     const round = (num) => {
         if (isNaN(num) || !isFinite(num)) return 0;
         return Math.round(num * 10) / 10;
     }
+
+    const calculatedTotal = round(finalFlourWeight) + round(finalWaterWeight) + round(finalStarterWeight) + round(saltWeight);
+
     return {
         flourWeight: round(finalFlourWeight),
         waterWeight: round(finalWaterWeight),
         starterWeight: round(finalStarterWeight),
-        saltWeight: round(saltWeight)
+        saltWeight: round(saltWeight),
+        totalWeight: round(calculatedTotal)
     };
 }
 
 
 function RecipeCalculator() {
-    // Input states
-    const [targetDoughWeight, setTargetDoughWeight] = useState(INITIAL_INPUTS.targetDoughWeight);
-    const [hydrationPercentage, setHydrationPercentage] = useState(INITIAL_INPUTS.hydrationPercentage);
-    const [starterPercentage, setStarterPercentage] = useState(INITIAL_INPUTS.starterPercentage);
-    const [starterHydration, setStarterHydration] = useState(INITIAL_INPUTS.starterHydration);
-    const [saltPercentage, setSaltPercentage] = useState(INITIAL_INPUTS.saltPercentage);
-    const [recipeName, setRecipeName] = useState(INITIAL_INPUTS.recipeName);
-    const [description, setDescription] = useState(INITIAL_INPUTS.description);
-    const [currentRecipeId, setCurrentRecipeId] = useState(null); // To store the ID of the loaded/editing recipe
-
-    // Output states
-    const [results, setResults] = useState({ flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0 });
-    
-    // UI/UX states
+    const [recipeName, setRecipeName] = useState(INITIAL_RECIPE_STATE.recipe_name);
+    const [description, setDescription] = useState(INITIAL_RECIPE_STATE.description);
+    const [targetDoughWeight, setTargetDoughWeight] = useState(INITIAL_RECIPE_STATE.targetDoughWeight);
+    const [hydrationPercentage, setHydrationPercentage] = useState(INITIAL_RECIPE_STATE.hydrationPercentage);
+    const [saltPercentage, setSaltPercentage] = useState(INITIAL_RECIPE_STATE.saltPercentage);
+    const [currentRecipeId, setCurrentRecipeId] = useState(null);
+    const [recipeSteps, setRecipeSteps] = useState([]);
+    const [predefinedSteps, setPredefinedSteps] = useState([]);
+    const [isLoadingPredefinedSteps, setIsLoadingPredefinedSteps] = useState(false);
+    const [results, setResults] = useState({ flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: 0 });
     const [isLoadingRecipes, setIsLoadingRecipes] = useState(false);
-    const [isSaving, setIsSaving] = useState(false); // For save/update operations
+    const [isSaving, setIsSaving] = useState(false);
     const [savedRecipes, setSavedRecipes] = useState([]);
-    const [selectedRecipeToLoad, setSelectedRecipeToLoad] = useState(''); // For the dropdown
-    const [feedbackMessage, setFeedbackMessage] = useState({ type: '', text: '' }); // For user feedback
+    const [selectedRecipeToLoad, setSelectedRecipeToLoad] = useState('');
+    const [feedbackMessage, setFeedbackMessage] = useState({ type: '', text: '' });
 
-    const clearFeedback = () => setFeedbackMessage({ type: '', text: '' });
+    const clearFeedback = useCallback(() => setFeedbackMessage({ type: '', text: '' }), []);
 
-    // Function to populate all input form fields
-    const setAllInputs = useCallback((data) => {
-        setTargetDoughWeight(String(data.targetDoughWeight || INITIAL_INPUTS.targetDoughWeight));
-        setHydrationPercentage(String(data.hydrationPercentage || INITIAL_INPUTS.hydrationPercentage));
-        setStarterPercentage(String(data.starterPercentage || INITIAL_INPUTS.starterPercentage));
-        setStarterHydration(String(data.starterHydration || INITIAL_INPUTS.starterHydration));
-        setSaltPercentage(String(data.saltPercentage || INITIAL_INPUTS.saltPercentage));
-        setRecipeName(String(data.recipe_name || INITIAL_INPUTS.recipeName));
-        setDescription(String(data.description || INITIAL_INPUTS.description));
-        setCurrentRecipeId(data.recipe_id || null);
-        setSelectedRecipeToLoad(data.recipe_id || ''); // Sync dropdown
-    }, []); // INITIAL_INPUTS is stable
+    const fetchPredefinedSteps = useCallback(async () => {
+        if (!AuthService.isLoggedIn()) return;
+        setIsLoadingPredefinedSteps(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/steps`, {
+                headers: AuthService.getAuthHeader(),
+            });
+            if (!response.ok) throw new Error(`HTTP error fetching step types! status: ${response.status}`);
+            const data = await response.json();
+            setPredefinedSteps(data || []);
+            const levainStepFromAPI = data.find(s => s.step_name === 'Levain Build');
+            if (levainStepFromAPI) {
+                LEVAIN_BUILD_STEP_ID_DYNAMIC = levainStepFromAPI.step_id;
+            }
+        } catch (error) {
+            console.error("RecipeCalculator: Error fetching predefined steps:", error);
+            setFeedbackMessage({ type: 'error', text: `Failed to load step types: ${error.message}` });
+        } finally {
+            setIsLoadingPredefinedSteps(false);
+        }
+    }, []);
 
-    // Fetch the list of saved recipes for the authenticated user on component mount
+    useEffect(() => {
+        fetchPredefinedSteps();
+    }, [fetchPredefinedSteps]);
+
+    const setFormStateFromRecipe = useCallback((recipeData) => {
+        setRecipeName(String(recipeData.recipe_name || INITIAL_RECIPE_STATE.recipe_name));
+        setDescription(String(recipeData.description || INITIAL_RECIPE_STATE.description));
+        setTargetDoughWeight(String(recipeData.targetDoughWeight || INITIAL_RECIPE_STATE.targetDoughWeight));
+        setHydrationPercentage(String(recipeData.hydrationPercentage || INITIAL_RECIPE_STATE.hydrationPercentage));
+        setSaltPercentage(String(recipeData.saltPercentage || INITIAL_RECIPE_STATE.saltPercentage));
+        setCurrentRecipeId(recipeData.recipe_id || null);
+        setSelectedRecipeToLoad(String(recipeData.recipe_id || ''));
+        
+        const processedSteps = (recipeData.steps || []).map(step => {
+            const predefined = predefinedSteps.find(ps => ps.step_id === step.step_id);
+            return {
+                ...step,
+                step_name: step.step_name || (predefined ? predefined.step_name : `Unknown Step ID ${step.step_id}`),
+                duration_override: step.duration_override != null ? Number(step.duration_override) : null,
+                target_temperature_celsius: step.target_temperature_celsius != null ? Number(step.target_temperature_celsius) : null,
+                contribution_pct: step.contribution_pct != null ? Number(step.contribution_pct) : null,
+                target_hydration: step.target_hydration != null ? Number(step.target_hydration) : null,
+            };
+        });
+        setRecipeSteps(processedSteps);
+    }, [predefinedSteps]);
+
+    const handleClearForm = useCallback(() => {
+        setRecipeName(INITIAL_RECIPE_STATE.recipe_name);
+        setDescription(INITIAL_RECIPE_STATE.description);
+        setTargetDoughWeight(INITIAL_RECIPE_STATE.targetDoughWeight);
+        setHydrationPercentage(INITIAL_RECIPE_STATE.hydrationPercentage);
+        setSaltPercentage(INITIAL_RECIPE_STATE.saltPercentage);
+        setCurrentRecipeId(null);
+        setSelectedRecipeToLoad('');
+        
+        let initialSteps = [];
+        const levainTemplate = predefinedSteps.find(ps => ps.step_name === 'Levain Build');
+        if (levainTemplate) {
+            LEVAIN_BUILD_STEP_ID_DYNAMIC = levainTemplate.step_id; // Ensure this is set
+            initialSteps = [{
+                ...DEFAULT_LEVAIN_STEP_TEMPLATE,
+                step_id: levainTemplate.step_id,
+                step_name: levainTemplate.step_name,
+            }];
+        }
+        setRecipeSteps(initialSteps);
+        clearFeedback();
+    }, [clearFeedback, predefinedSteps]);
+
     const fetchUserRecipes = useCallback(async () => {
         if (!AuthService.isLoggedIn()) {
-            console.log("RecipeCalculator: User not logged in, not fetching recipes.");
-            setSavedRecipes([]); // Clear any existing recipes if user logs out
+            setSavedRecipes([]);
+             handleClearForm(); // Clear form if user logs out
             return;
         }
         setIsLoadingRecipes(true);
-        setFeedbackMessage({ type: '', text: ''});
-        console.log("RecipeCalculator: Fetching user recipes...");
+        clearFeedback();
         try {
             const response = await fetch(`${API_BASE_URL}/api/recipes`, {
-                method: 'GET',
-                headers: AuthService.getAuthHeader(), // Get auth header from AuthService
+                headers: AuthService.getAuthHeader(),
             });
             if (!response.ok) {
-                const errData = await response.json().catch(() => ({})); // Try to get error message
+                const errData = await response.json().catch(() => ({}));
                 throw new Error(errData.message || `HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
             setSavedRecipes(data || []);
             if (data.length === 0) {
-                setFeedbackMessage({ type: 'info', text: 'No saved recipes found. Create one below!' });
+                setFeedbackMessage({ type: 'info', text: 'No saved recipes found.' });
+                 handleClearForm(); // Also ensure form is reset if no recipes
             }
-            console.log("RecipeCalculator: Recipes fetched successfully", data);
         } catch (error) {
             console.error("RecipeCalculator: Error fetching user recipes:", error);
             setFeedbackMessage({ type: 'error', text: `Failed to load recipes: ${error.message}` });
-            setSavedRecipes([]); // Clear recipes on error
+            setSavedRecipes([]);
+             handleClearForm(); // Clear form on error
         } finally {
             setIsLoadingRecipes(false);
         }
-    }, []);
+    }, [clearFeedback, handleClearForm]);
 
     useEffect(() => {
-        fetchUserRecipes();
-        // This effect should re-run if the user's login status changes.
-        // We might need a way to trigger this from App.js if a user logs in/out
-        // while this component is mounted, or rely on App.js unmounting/remounting this component.
-        // For now, it runs on mount.
-    }, [fetchUserRecipes]);
+        if (AuthService.isLoggedIn()) {
+            fetchUserRecipes();
+        } else {
+            handleClearForm();
+        }
+    }, [AuthService.isLoggedIn(), fetchUserRecipes, handleClearForm]);
 
 
-    // Recalculate results when inputs change
     useEffect(() => {
         const newResults = calculateRecipe(
-            parseFloat(targetDoughWeight) || 0,
-            parseFloat(hydrationPercentage) || 0,
-            parseFloat(starterPercentage) || 0,
-            parseFloat(starterHydration) || 0,
-            parseFloat(saltPercentage) || 0
+            targetDoughWeight,
+            hydrationPercentage,
+            saltPercentage,
+            recipeSteps
         );
         setResults(newResults);
-    }, [targetDoughWeight, hydrationPercentage, starterPercentage, starterHydration, saltPercentage]);
+    }, [targetDoughWeight, hydrationPercentage, saltPercentage, recipeSteps]);
 
-    // Handler for loading a selected recipe from the dropdown
-    const handleLoadRecipe = (event) => {
+    const handleLoadRecipe = async (event) => {
         clearFeedback();
         const recipeIdToLoad = event.target.value;
-        setSelectedRecipeToLoad(recipeIdToLoad);
-
-        if (!recipeIdToLoad) { // "Select a recipe" option
-            setAllInputs(INITIAL_INPUTS); // Reset form to initial defaults
+        
+        if (!recipeIdToLoad) {
+            handleClearForm();
             return;
         }
+        setSelectedRecipeToLoad(recipeIdToLoad); // Set this immediately so dropdown reflects selection
 
-        const recipeToLoad = savedRecipes.find(r => String(r.recipe_id) === String(recipeIdToLoad));
-        if (recipeToLoad) {
-            console.log("RecipeCalculator: Loading recipe into form:", recipeToLoad);
-            setAllInputs(recipeToLoad); // Populate form with selected recipe's data
-            // The backend GET /api/recipes should return all necessary fields including recipe_name,
-            // targetDoughWeight, hydrationPercentage, saltPercentage, starterPercentage, starterHydration.
+        setIsLoadingRecipes(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/recipes/${recipeIdToLoad}`, {
+                headers: AuthService.getAuthHeader(),
+            });
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.message || `HTTP error! status: ${response.status}`);
+            }
+            const recipeData = await response.json();
+            setFormStateFromRecipe(recipeData); 
+        } catch (error) {
+            console.error("RecipeCalculator: Error fetching specific recipe:", error);
+            setFeedbackMessage({ type: 'error', text: `Failed to load recipe: ${error.message}` });
+            handleClearForm();
+        } finally {
+            setIsLoadingRecipes(false);
         }
     };
+    
+    useEffect(() => {
+        if (!currentRecipeId && AuthService.isLoggedIn() && predefinedSteps.length > 0) {
+             handleClearForm();
+        }
+    }, [currentRecipeId, predefinedSteps, handleClearForm]);
 
-    // Placeholder for handleSaveOrUpdateRecipe - to be implemented next
+
     const handleSaveOrUpdateRecipe = async () => {
         clearFeedback();
         if (!recipeName.trim()) {
             setFeedbackMessage({ type: 'error', text: 'Recipe name is required.' });
             return;
         }
+        if (recipeSteps.length === 0) {
+            setFeedbackMessage({ type: 'error', text: 'At least one recipe step is required.' });
+            return;
+        }
+        // Validate steps
+        for (const step of recipeSteps) {
+            if (step.step_id == null || step.step_order == null) {
+                 setFeedbackMessage({ type: 'error', text: `Each step must have a type and order.`});
+                 return;
+            }
+            if (step.step_id === LEVAIN_BUILD_STEP_ID_DYNAMIC && (step.contribution_pct == null || step.target_hydration == null)) {
+                setFeedbackMessage({ type: 'error', text: `Levain Build step requires Contribution % and Starter Hydration %.`});
+                return;
+            }
+        }
+
+
         setIsSaving(true);
         const recipeData = {
             recipe_name: recipeName.trim(),
             description: description.trim(),
             targetDoughWeight: parseFloat(targetDoughWeight),
-            // target_weight_unit_id: 1, // Assuming grams, or make this selectable
             hydrationPercentage: parseFloat(hydrationPercentage),
-            starterPercentage: parseFloat(starterPercentage),
-            starterHydration: parseFloat(starterHydration),
             saltPercentage: parseFloat(saltPercentage),
+            steps: recipeSteps.map(step => ({ 
+                step_id: Number(step.step_id),
+                step_order: Number(step.step_order),
+                duration_override: step.duration_override != null ? Number(step.duration_override) : null,
+                notes: step.notes || null,
+                target_temperature_celsius: step.target_temperature_celsius != null ? Number(step.target_temperature_celsius) : null,
+                contribution_pct: step.contribution_pct != null ? Number(step.contribution_pct) : null,
+                target_hydration: step.target_hydration != null ? Number(step.target_hydration) : null,
+            }))
         };
 
         let url = `${API_BASE_URL}/api/recipes`;
         let method = 'POST';
 
-        if (currentRecipeId) { // If there's a currentRecipeId, we're updating
+        if (currentRecipeId) {
             url = `${API_BASE_URL}/api/recipes/${currentRecipeId}`;
             method = 'PUT';
-            console.log(`RecipeCalculator: Updating recipe ID ${currentRecipeId} with data:`, recipeData);
-        } else {
-            console.log("RecipeCalculator: Saving new recipe with data:", recipeData);
         }
 
         try {
             const response = await fetch(url, {
                 method: method,
-                headers: {
-                    ...AuthService.getAuthHeader(), // Add auth token
-                    'Content-Type': 'application/json',
-                },
+                headers: { ...AuthService.getAuthHeader(), 'Content-Type': 'application/json', },
                 body: JSON.stringify(recipeData),
             });
-
             const result = await response.json();
-            if (!response.ok) {
-                throw new Error(result.message || `HTTP error! status: ${response.status}`);
-            }
-
+            if (!response.ok) throw new Error(result.message || `HTTP error! status: ${response.status}`);
             setFeedbackMessage({ type: 'success', text: result.message || `Recipe ${method === 'POST' ? 'saved' : 'updated'} successfully!` });
             
-            // After save/update, refresh the recipe list and potentially update the form
-            await fetchUserRecipes(); // Refresh list
-            if (method === 'POST' && result.recipe && result.recipe.recipe_id) {
-                // If new recipe created, update currentRecipeId and selectedRecipeToLoad
-                setCurrentRecipeId(result.recipe.recipe_id);
-                setSelectedRecipeToLoad(result.recipe.recipe_id); // Select it in dropdown
-            } else if (method === 'PUT' && result.recipe) {
-                // If updated, ensure form reflects any backend-modified data (like updated_at)
-                // For now, just re-asserting selected is usually fine as primary data came from form.
-                 setSelectedRecipeToLoad(currentRecipeId);
+            await fetchUserRecipes();
+            
+            const recipeIdToLoad = method === 'POST' ? (result.recipe && result.recipe.recipe_id) : currentRecipeId;
+            if (recipeIdToLoad) {
+                const freshRecipeData = await (await fetch(`${API_BASE_URL}/api/recipes/${recipeIdToLoad}`, { headers: AuthService.getAuthHeader() })).json();
+                setFormStateFromRecipe(freshRecipeData);
+            } else if (method === 'POST') { // New recipe, but ID not in result for some reason
+                handleClearForm(); // Fallback to clear form
             }
-
-
         } catch (error) {
             console.error(`RecipeCalculator: Error ${method === 'POST' ? 'saving' : 'updating'} recipe:`, error);
             setFeedbackMessage({ type: 'error', text: error.message || `Failed to ${method === 'POST' ? 'save' : 'update'} recipe.` });
@@ -250,34 +358,23 @@ function RecipeCalculator() {
         }
     };
     
-    // Placeholder for handleDeleteRecipe - to be implemented next
     const handleDeleteRecipe = async () => {
         clearFeedback();
         if (!currentRecipeId) {
-            setFeedbackMessage({ type: 'error', text: 'No recipe selected to delete.' });
-            return;
+            setFeedbackMessage({ type: 'error', text: 'No recipe selected to delete.' }); return;
         }
-        if (!window.confirm(`Are you sure you want to delete the recipe "${recipeName}"?`)) {
-            return;
-        }
-
-        setIsSaving(true); // Or a specific isDeleting state
-        console.log(`RecipeCalculator: Deleting recipe ID ${currentRecipeId}`);
+        if (!window.confirm(`Are you sure you want to delete the recipe "${recipeName}"?`)) return;
+        
+        setIsSaving(true);
         try {
             const response = await fetch(`${API_BASE_URL}/api/recipes/${currentRecipeId}`, {
-                method: 'DELETE',
-                headers: AuthService.getAuthHeader(),
+                method: 'DELETE', headers: AuthService.getAuthHeader(),
             });
-            const result = await response.json(); // Even for 204, try to parse, or check status first
-            if (!response.ok) {
-                 throw new Error(result.message || `HTTP error! status: ${response.status}`);
-            }
+            const result = await response.json(); 
+            if (!response.ok) throw new Error(result.message || `HTTP error! status: ${response.status}`);
             setFeedbackMessage({ type: 'success', text: result.message || 'Recipe deleted successfully.'});
-            setAllInputs(INITIAL_INPUTS); // Reset form
-            await fetchUserRecipes(); // Refresh list
-            setSelectedRecipeToLoad(''); // De-select
-            setCurrentRecipeId(null);
-
+            handleClearForm(); 
+            await fetchUserRecipes(); 
         } catch (error) {
             console.error(`RecipeCalculator: Error deleting recipe:`, error);
             setFeedbackMessage({ type: 'error', text: error.message || 'Failed to delete recipe.'});
@@ -286,38 +383,88 @@ function RecipeCalculator() {
         }
     };
 
+    const handleStepChange = (index, field, value) => {
+        const updatedSteps = recipeSteps.map((step, i) => {
+            if (i === index) {
+                const newStep = { ...step, [field]: value };
+                // If step_id changes, update step_name and reset conditional fields
+                if (field === 'step_id') {
+                    const predefined = predefinedSteps.find(ps => ps.step_id === Number(value));
+                    newStep.step_name = predefined ? predefined.step_name : 'Custom Step';
+                    if (Number(value) !== LEVAIN_BUILD_STEP_ID_DYNAMIC) {
+                        newStep.contribution_pct = null;
+                        newStep.target_hydration = null;
+                    } else { // It's a levain step
+                        newStep.contribution_pct = newStep.contribution_pct ?? DEFAULT_LEVAIN_STEP_TEMPLATE.contribution_pct;
+                        newStep.target_hydration = newStep.target_hydration ?? DEFAULT_LEVAIN_STEP_TEMPLATE.target_hydration;
+                    }
+                }
+                return newStep;
+            }
+            return step;
+        });
 
-    const totalCalculatedWeight = results.flourWeight + results.waterWeight + results.starterWeight + results.saltWeight;
+        // Re-sort by step_order if it was the field changed or if just adding/removing
+        // This ensures step_order remains sequential visually if user changes it
+        if (field === 'step_order') {
+             updatedSteps.sort((a, b) => (a.step_order || 0) - (b.step_order || 0));
+        }
+        setRecipeSteps(updatedSteps);
+    };
 
+    const handleAddStep = () => {
+        const maxOrder = recipeSteps.reduce((max, step) => Math.max(max, step.step_order || 0), 0);
+        const defaultNewStep = predefinedSteps.length > 0 
+            ? { ...predefinedSteps[0], step_name: predefinedSteps[0].step_name || 'New Step' } // Use name from predefined
+            : { step_id: null, step_name: 'New Step' };
+
+        const newStep = {
+            ...defaultNewStep,
+            step_order: maxOrder + 1,
+            duration_override: null,
+            notes: '',
+            target_temperature_celsius: null,
+            contribution_pct: null,
+            target_hydration: null,
+            // Add a temporary client-side ID for keying if items could be added/deleted rapidly
+            // temp_client_id: Date.now() 
+        };
+        setRecipeSteps([...recipeSteps, newStep]);
+    };
+
+    const handleDeleteStep = (indexToDelete) => {
+        const updatedSteps = recipeSteps.filter((_, index) => index !== indexToDelete)
+            .map((step, index) => ({ ...step, step_order: index + 1 })); // Re-sequence order
+        setRecipeSteps(updatedSteps);
+    };
+    
     return (
         <div className="recipe-calculator">
             <h2>Sourdough Recipe Calculator</h2>
-            {/* Feedback Message Display */}
             {feedbackMessage.text && (
                 <p style={{ color: feedbackMessage.type === 'error' ? 'red' : 'green' }}>
                     {feedbackMessage.text}
                 </p>
             )}
 
-            {/* Recipe Management Section */}
             <div className="recipe-management-group">
-                <h3>Manage Recipes</h3>
-                {AuthService.isLoggedIn() && savedRecipes.length > 0 && (
+                 <h3>Manage Recipes</h3>
+                {AuthService.isLoggedIn() && (
                     <div className="input-group">
                         <label htmlFor="loadRecipeSelect">Load Recipe:</label>
                         <select id="loadRecipeSelect" value={selectedRecipeToLoad} onChange={handleLoadRecipe} disabled={isLoadingRecipes}>
                             <option value="">Select a recipe...</option>
                             {savedRecipes.map(recipe => (
                                 <option key={recipe.recipe_id} value={recipe.recipe_id}>
-                                    {recipe.recipe_name} (ID: {recipe.recipe_id})
+                                    {recipe.recipe_name}
                                 </option>
                             ))}
                         </select>
                         {isLoadingRecipes && <p>Loading recipes...</p>}
+                         {savedRecipes.length === 0 && !isLoadingRecipes && (
+                            <p>No saved recipes. Fill out the form and save your first recipe!</p>
+                        )}
                     </div>
-                )}
-                {AuthService.isLoggedIn() && savedRecipes.length === 0 && !isLoadingRecipes && (
-                    <p>No saved recipes. Fill out the form and save your first recipe!</p>
                 )}
                 {!AuthService.isLoggedIn() && (
                     <p>Please login to save and load your recipes.</p>
@@ -326,38 +473,88 @@ function RecipeCalculator() {
             
             <hr />
 
-            {/* Calculator Inputs */}
             <div className="input-group">
                 <label htmlFor="recipeName">Recipe Name:</label>
-                <input type="text" id="recipeName" value={recipeName} onChange={(e) => {setRecipeName(e.target.value); clearFeedback();}} placeholder="e.g., Weekend Country Loaf" />
+                <input type="text" id="recipeName" value={recipeName} onChange={(e) => {setRecipeName(e.target.value); clearFeedback();}} />
             </div>
              <div className="input-group">
                 <label htmlFor="description">Description (Optional):</label>
-                <textarea id="description" value={description} onChange={(e) => {setDescription(e.target.value); clearFeedback();}} placeholder="Notes about this recipe..." />
+                <textarea id="description" value={description} onChange={(e) => {setDescription(e.target.value); clearFeedback();}} />
             </div>
-
             <div className="input-group two-column">
                 <label htmlFor="targetDoughWeight">Target Dough Weight (g):</label>
                 <input type="number" id="targetDoughWeight" value={targetDoughWeight} onChange={(e) => {setTargetDoughWeight(e.target.value); clearFeedback();}} />
             </div>
             <div className="input-group two-column">
-                <label htmlFor="hydrationPercentage">Hydration (%):</label>
+                <label htmlFor="hydrationPercentage">Overall Hydration (%):</label>
                 <input type="number" id="hydrationPercentage" value={hydrationPercentage} onChange={(e) => {setHydrationPercentage(e.target.value); clearFeedback();}} />
             </div>
             <div className="input-group two-column">
-                <label htmlFor="starterPercentage">Starter (% of flour):</label>
-                <input type="number" id="starterPercentage" value={starterPercentage} onChange={(e) => {setStarterPercentage(e.target.value); clearFeedback();}} />
-            </div>
-            <div className="input-group two-column">
-                <label htmlFor="starterHydration">Starter Hydration (%):</label>
-                <input type="number" id="starterHydration" value={starterHydration} onChange={(e) => {setStarterHydration(e.target.value); clearFeedback();}} />
-            </div>
-            <div className="input-group two-column">
-                <label htmlFor="saltPercentage">Salt (% of flour):</label>
+                <label htmlFor="saltPercentage">Salt (% of total flour):</label>
                 <input type="number" id="saltPercentage" value={saltPercentage} onChange={(e) => {setSaltPercentage(e.target.value); clearFeedback();}} />
             </div>
+            
+            <hr />
+            <h3>Recipe Steps</h3>
+            <div className="steps-management-section">
+                {isLoadingPredefinedSteps && <p>Loading step types...</p>}
+                {recipeSteps.map((step, index) => (
+                    <div key={index /* Or step.temp_client_id if you add one */} className="step-item-editor" style={{border: '1px solid #ddd', padding: '15px', marginBottom: '15px', borderRadius: '4px'}}>
+                        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                            <h4>
+                                Step {step.step_order || index + 1}: 
+                                <select 
+                                    value={step.step_id || ''} 
+                                    onChange={(e) => handleStepChange(index, 'step_id', e.target.value ? parseInt(e.target.value) : null)}
+                                    disabled={isLoadingPredefinedSteps}
+                                    style={{marginLeft: '10px'}}
+                                >
+                                    <option value="">-- Select Step Type --</option>
+                                    {predefinedSteps.map(ps => (
+                                        <option key={ps.step_id} value={ps.step_id}>{ps.step_name}</option>
+                                    ))}
+                                </select>
+                            </h4>
+                            <button type="button" onClick={() => handleDeleteStep(index)} style={{color: 'red'}}>Remove</button>
+                        </div>
+                         <div className="input-group two-column">
+                            <label>Order: </label>
+                            <input type="number" min="1" value={step.step_order || ''} onChange={e => handleStepChange(index, 'step_order', e.target.value ? parseInt(e.target.value) : (recipeSteps.length + 1) )} />
+                        </div>
+                        <div className="input-group two-column">
+                            <label>Duration (mins): </label>
+                            <input type="number" placeholder="e.g., 60" value={step.duration_override || ''} onChange={e => handleStepChange(index, 'duration_override', e.target.value === '' ? null : parseInt(e.target.value))} />
+                        </div>
+                        <div className="input-group two-column">
+                            <label>Temp (°C): </label>
+                            <input type="number" placeholder="e.g., 24" value={step.target_temperature_celsius || ''} onChange={e => handleStepChange(index, 'target_temperature_celsius', e.target.value === '' ? null : parseFloat(e.target.value))} />
+                        </div>
+                        
+                        {step.step_id === LEVAIN_BUILD_STEP_ID_DYNAMIC && (
+                            <>
+                                <div className="input-group two-column">
+                                    <label>Levain Contribution (% of TDW): </label>
+                                    <input type="number" placeholder="e.g., 20" value={step.contribution_pct || ''} onChange={e => handleStepChange(index, 'contribution_pct', e.target.value === '' ? null : parseFloat(e.target.value))} />
+                                </div>
+                                <div className="input-group two-column">
+                                    <label>Levain Hydration (%): </label>
+                                    <input type="number" placeholder="e.g., 100" value={step.target_hydration || ''} onChange={e => handleStepChange(index, 'target_hydration', e.target.value === '' ? null : parseFloat(e.target.value))} />
+                                </div>
+                            </>
+                        )}
+                        <div className="input-group">
+                            <label>Notes for this step: </label>
+                            <textarea style={{width: 'calc(100% - 22px)'}} value={step.notes || ''} onChange={e => handleStepChange(index, 'notes', e.target.value)} />
+                        </div>
+                    </div>
+                ))}
+                <button type="button" onClick={handleAddStep} disabled={isLoadingPredefinedSteps || predefinedSteps.length === 0}>
+                    {isLoadingPredefinedSteps ? 'Loading types...' : (predefinedSteps.length === 0 && !isLoadingPredefinedSteps ? 'No Step Types Loaded' : 'Add Step')}
+                </button>
+            </div>
+            <hr style={{marginTop: '20px'}}/>
 
-            {/* Action Buttons */}
+
             {AuthService.isLoggedIn() && (
                 <div className="actions-group">
                     <button onClick={handleSaveOrUpdateRecipe} disabled={isSaving}>
@@ -368,23 +565,21 @@ function RecipeCalculator() {
                             {isSaving ? 'Deleting...' : 'Delete Loaded Recipe'}
                         </button>
                     )}
-                     <button onClick={() => { setAllInputs(INITIAL_INPUTS); clearFeedback(); }} style={{marginLeft: '10px', backgroundColor: '#6c757d'}}>
+                     <button type="button" onClick={handleClearForm} style={{marginLeft: '10px', backgroundColor: '#6c757d'}}>
                         Clear Form / New
                     </button>
                 </div>
             )}
 
-
-            {/* Results Display */}
             <div className="results-group">
                 <h3>Recipe Calculation:</h3>
-                <div className="result-item"><span>Flour:</span> <span>{results.flourWeight} g</span></div>
-                <div className="result-item"><span>Water:</span> <span>{results.waterWeight} g</span></div>
+                <div className="result-item"><span>Flour (added):</span> <span>{results.flourWeight} g</span></div>
+                <div className="result-item"><span>Water (added):</span> <span>{results.waterWeight} g</span></div>
                 <div className="result-item"><span>Starter:</span> <span>{results.starterWeight} g</span></div>
                 <div className="result-item"><span>Salt:</span> <span>{results.saltWeight} g</span></div>
                 <div className="result-item total">
                     <strong>Total:</strong>
-                    <strong>{isNaN(totalCalculatedWeight) ? 0 : totalCalculatedWeight.toFixed(1)} g</strong>
+                    <strong>{results.totalWeight} g</strong>
                 </div>
             </div>
         </div>
