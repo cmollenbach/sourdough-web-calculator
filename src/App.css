@@ -11,7 +11,8 @@
   --color-primary-darker: #6D4C41;/* Darker Muted Brown (was #8B4513) */
   --color-secondary: #F5F5F5;     /* Lighter, more neutral beige/off-white (was #F5EFE6) */
   --color-text: #5D4037;          /* Darker, less saturated brown (was #4A3B31) */
-  --color-text-muted: #8D7B68;    /* Muted earthy tone for less important text (was #706159) */
+  /* --color-text-muted: #8D7B68;    Slightly darkened for better contrast */
+  --color-text-muted: #796A5B;    /* Darkened Muted earthy tone */
   --color-border: #D7CCC8;       /* Softer, muted border (was #DCD0C0) */
   --color-error: #B00020;         /* Standard error red - can be muted further if desired */
   --color-success: #2E7D32;       /* Clear success green */
@@ -26,12 +27,19 @@
   --border-radius-small: 4px;
   --border-radius-medium: 8px;
   --spacing-unit: 8px; /* Base unit for margins/paddings */
+
+  /* Added for loading spinner */
+  --spinner-size: 1.2em;
+  --spinner-border-size: 0.15em;
+  --spinner-color: var(--color-primary);
+  --spinner-color-light: var(--color-surface);
 }
 
 /* Global Resets and Body Styling */
 body {
   margin: 0;
   font-family: var(--font-family-body);
+  font-size: 1.125rem; /* Increased base font size */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--color-background);
@@ -76,12 +84,18 @@ nav a, nav button {
   padding: var(--spacing-unit) calc(var(--spacing-unit) * 1.5);
   border-radius: var(--border-radius-small);
   transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+  display: inline-flex; /* For icon alignment if any */
+  align-items: center; /* For icon alignment if any */
 }
 
-nav a:hover {
+nav a:hover, nav a.active { /* Added .active class for active links */
   color: var(--color-link-hover);
-  background-color: var(--color-secondary); /* Use light secondary for hover */
+  background-color: var(--color-secondary); /* Use light secondary for hover/active */
 }
+nav a.active {
+  box-shadow: inset 0 -2px 0 var(--color-primary-darker); /* Subtle indicator for active link */
+}
+
 
 nav button {
   background-color: transparent;
@@ -94,9 +108,10 @@ nav button:hover {
   color: var(--color-surface);
 }
 
-nav span {
+nav span { /* Welcome message */
   color: var(--color-text-muted);
   margin-right: calc(var(--spacing-unit) * 2);
+  font-size: 0.9em;
 }
 
 /* Typography */
@@ -187,6 +202,10 @@ input[type="submit"] {
   transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
   text-transform: uppercase; /* Modern touch for buttons */
   letter-spacing: 0.5px; /* Modern touch */
+  position: relative; /* For spinner positioning */
+  display: inline-flex; /* For spinner alignment */
+  align-items: center; /* For spinner alignment */
+  justify-content: center; /* For spinner alignment */
 }
 
 button:hover,
@@ -225,4 +244,22 @@ main {
   color: var(--color-success);
   font-size: 0.9rem;
   margin-top: calc(var(--spacing-unit) * 0.5);
+}
+
+/* General Loading Spinner */
+.loading-spinner {
+  display: inline-block;
+  width: var(--spinner-size);
+  height: var(--spinner-size);
+  border: var(--spinner-border-size) solid var(--spinner-color-light); /* Light grey for the track */
+  border-top-color: var(--spinner-color); /* Primary color for the spinner */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: calc(var(--spacing-unit) * 1); /* Space it from button text */
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }

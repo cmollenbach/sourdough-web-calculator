@@ -49,6 +49,12 @@ function StepsColumn({
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
+    const addStepButtonText = () => {
+        if (isLoadingPredefinedSteps) return 'Loading types...';
+        if (predefinedSteps.length === 0 && !isLoadingPredefinedSteps) return 'No Step Types Loaded';
+        return '⊕ Add Step'; // Unicode plus icon
+    };
+
     return (
         <div className={styles.stepsColumn}>
             <h3>Recipe Steps</h3>
@@ -74,9 +80,10 @@ function StepsColumn({
                             type="button"
                             onClick={onAddStep}
                             disabled={isLoadingPredefinedSteps || predefinedSteps.length === 0 || isSaving}
-                            className={styles.addStepButton}
+                            className={`${styles.addStepButton} ${styles.buttonWithSpinner}`}
                         >
-                            {isLoadingPredefinedSteps ? 'Loading types...' : (predefinedSteps.length === 0 && !isLoadingPredefinedSteps ? 'No Step Types Loaded' : 'Add Step')}
+                            {addStepButtonText()}
+                            {isSaving && <span className={styles.buttonSpinner}></span>}
                         </button>
                     </div>
                 </SortableContext>

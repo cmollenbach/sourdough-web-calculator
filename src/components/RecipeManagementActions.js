@@ -57,16 +57,19 @@ function RecipeManagementActions({
             <hr />
 
             <div className={`${styles.actionsGroup} ${styles.mainActions}`}>
-                <button onClick={onSaveOrUpdate} disabled={isSaving}>
-                    {isSaving ? 'Saving...' : (currentRecipeId ? 'Update Loaded Recipe' : 'Save as New Recipe')}
+                <button onClick={onSaveOrUpdate} disabled={isSaving} className={styles.buttonWithSpinner}>
+                    {isSaving ? (currentRecipeId ? 'Updating...' : 'Saving...') : (currentRecipeId ? 'Update Loaded Recipe' : 'Save as New Recipe')}
+                    {isSaving && <span className={styles.buttonSpinner}></span>}
                 </button>
                 {currentRecipeId && (
-                    <button onClick={onDelete} disabled={isSaving} className={styles.buttonDanger}>
+                    <button onClick={onDelete} disabled={isSaving} className={`${styles.buttonDanger} ${styles.buttonWithSpinner}`}>
                         {isSaving ? 'Deleting...' : 'Delete Loaded Recipe'}
+                        {isSaving && <span className={styles.buttonSpinner}></span>}
                     </button>
                 )}
-                <button type="button" onClick={onClearForm} className={styles.buttonSecondary} disabled={isSaving}>
+                <button type="button" onClick={onClearForm} className={`${styles.buttonSecondary} ${styles.buttonWithSpinner}`} disabled={isSaving}>
                     Clear Form / New
+                    {isSaving && <span className={styles.buttonSpinner}></span>}
                 </button>
             </div>
         </div>

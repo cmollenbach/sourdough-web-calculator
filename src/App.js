@@ -1,18 +1,16 @@
 // src/App.js
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import LoginPage from './components/LoginPage'; // Adjust path if needed
-import RegisterPage from './components/RegisterPage'; // Adjust path if needed
-import RecipeCalculator from './RecipeCalculator'; // Your main app component
+import { BrowserRouter as Router, Routes, Route, NavLink, Navigate } from 'react-router-dom'; // Changed Link to NavLink
+import LoginPage from './components/LoginPage';
+import RegisterPage from './components/RegisterPage';
+import RecipeCalculator from './RecipeCalculator';
 import AuthService from './services/AuthService';
-import './App.css'; // Or your main CSS file
+import './App.css';
 
 function App() {
     const [token, setToken] = useState(AuthService.getToken());
     const [currentUser, setCurrentUser] = useState(AuthService.getUser());
 
-    // This effect could be used to verify token with backend if needed on app load
-    // For now, we trust localStorage. A robust app might verify the token's validity.
     useEffect(() => {
         const currentToken = AuthService.getToken();
         const user = AuthService.getUser();
@@ -36,19 +34,52 @@ function App() {
         setToken(null);
         setCurrentUser(null);
         console.log("User logged out from App.js");
-        // No need to navigate here, protected route logic will handle redirect
     };
+
+    // Function to determine if a NavLink should be active
+    // For the main calculator page, we only want it active if it's exactly that path.
+    const navLinkIsActive = (path, match, location) => {
+        if (!match) {
+            return false;
+        }
+        if (path === "/") {
+            return location.pathname === "/";
+        }
+        return true;
+    };
+
 
     return (
         <Router>
             <div className="App">
                 <nav>
                     <ul>
-                        <li><Link to="/">Home (Calculator)</Link></li>
+                        <li>
+                            <NavLink 
+                                to="/" 
+                                className={({ isActive }) => isActive ? "active" : ""}
+                            >
+                                Home (Calculator)
+                            </NavLink>
+                        </li>
                         {!token ? (
                             <>
-                                <li><Link to="/login">Login</Link></li>
-                                <li><Link to="/register">Register</Link></li>
+                                <li>
+                                    <NavLink 
+                                        to="/login"
+                                        className={({ isActive }) => isActive ? "active" : ""}
+                                    >
+                                        Login
+                                    </NavLink>
+                                </li>
+                                <li>
+                                    <NavLink 
+                                        to="/register"
+                                        className={({ isActive }) => isActive ? "active" : ""}
+                                    >
+                                        Register
+                                    </NavLink>
+                                </li>
                             </>
                         ) : (
                             <>
@@ -64,7 +95,6 @@ function App() {
                         <Route path="/login" element={!token ? <LoginPage onLoginSuccess={handleLoginSuccess} /> : <Navigate to="/" />} />
                         <Route path="/register" element={!token ? <RegisterPage /> : <Navigate to="/" />} />
                         
-                        {/* Protected Route for RecipeCalculator */}
                         <Route 
                             path="/" 
                             element={
@@ -72,10 +102,6 @@ function App() {
                             } 
                         />
                         
-                        {/* You can add more routes here */}
-                        {/* Example: <Route path="/profile" element={token ? <UserProfilePage /> : <Navigate to="/login" />} /> */}
-                        
-                        {/* Optional: Catch-all for 404 or redirect to home */}
                         <Route path="*" element={<Navigate to="/" />} />
                     </Routes>
                 </main>
