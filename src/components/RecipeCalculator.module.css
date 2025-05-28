@@ -1,0 +1,371 @@
+/* src/components/RecipeCalculator.module.css */
+
+/* Overall Layout */
+.recipeCalculatorLayout {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: calc(var(--spacing-unit) * 1.5);
+    background-color: var(--color-surface);
+    padding: calc(var(--spacing-unit) * 2);
+    border-radius: var(--border-radius-medium);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid var(--color-border);
+    margin: calc(var(--spacing-unit) * 2) auto;
+    max-width: 1100px;
+}
+
+.recipeDetailsColumn {
+    flex: 2 1 0%; 
+    min-width: 340px;
+    padding: var(--spacing-unit);
+    display: flex;
+    flex-direction: column; 
+}
+
+.stepsColumn {
+    flex: 1 1 0%;
+    min-width: 280px;
+    padding: var(--spacing-unit);
+    display: flex;
+    flex-direction: column;
+}
+
+/* Headings and Messages */
+.mainTitle {
+    text-align: center;
+    margin-bottom: calc(var(--spacing-unit) * 2);
+    font-family: var(--font-family-headings);
+    color: var(--color-text);
+    font-size: 1.8rem;
+}
+
+.feedbackMessage {
+    text-align: center;
+    margin-bottom: calc(var(--spacing-unit) * 1.5);
+    padding: calc(var(--spacing-unit) * 0.75) var(--spacing-unit);
+    border-radius: var(--border-radius-small);
+    font-size: 0.85rem;
+}
+
+.feedbackMessageError {
+    color: var(--color-error);
+    background-color: rgba(var(--color-error-rgb, 176, 0, 32), 0.1);
+    border: 1px solid var(--color-error);
+}
+
+.feedbackMessageSuccess {
+    color: var(--color-success);
+    background-color: rgba(46, 125, 50, 0.1);
+    border: 1px solid var(--color-success);
+}
+.feedbackMessageInfo {
+    color: var(--color-text-muted);
+    background-color: var(--color-secondary);
+    border: 1px solid var(--color-border);
+}
+
+.authMessage,
+.loadingMessage,
+.infoMessage {
+    padding: var(--spacing-unit);
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    margin-bottom: var(--spacing-unit);
+}
+
+
+/* Input Groups and Form Elements */
+.inputGroup {
+    margin-bottom: var(--spacing-unit); 
+}
+
+.inputGroup label {
+    display: block;
+    margin-bottom: calc(var(--spacing-unit) * 0.25);
+    color: var(--color-text-muted);
+    font-weight: bold;
+    font-size: 0.85rem;
+}
+
+.inputGroup input[type="text"],
+.inputGroup input[type="number"],
+.inputGroup textarea,
+.inputGroup select {
+    width: 100%;
+    padding: calc(var(--spacing-unit) * 0.75); 
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-small);
+    font-family: var(--font-family-body);
+    font-size: 0.9rem;
+    color: var(--color-text);
+    background-color: var(--color-surface);
+    box-sizing: border-box;
+    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+/* Specific styles for number inputs */
+.inputGroup input[type="number"] {
+    text-align: right; /* Align text to the right */
+    max-width: 100px;   /* MODIFIED: Smaller max-width for 5 digits */
+}
+
+
+.inputGroup input:focus,
+.inputGroup textarea:focus,
+.inputGroup select:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 141, 110, 99), 0.25);
+}
+
+/* For RecipeDetailsColumn specific two-column layout */
+.recipeDetailsColumn .inputGroup.twoColumn {
+    display: grid;
+    grid-template-columns: minmax(140px, auto) minmax(80px, 100px); /* MODIFIED: Adjusted input column max width */
+    align-items: center; /* This handles vertical alignment of the fields */
+    gap: var(--spacing-unit);
+}
+.recipeDetailsColumn .inputGroup.twoColumn label {
+    margin-bottom: 0;
+    padding-right: var(--spacing-unit);
+    text-align: right;
+}
+.recipeDetailsColumn .inputGroup.twoColumn input:not([type="number"]),
+.recipeDetailsColumn .inputGroup.twoColumn textarea,
+.recipeDetailsColumn .inputGroup.twoColumn select {
+    max-width: none;
+}
+
+
+/* StepEditor specific two-column layout */
+.stepItemEditor .inputGroup.twoColumn {
+    display: grid;
+    grid-template-columns: minmax(100px, auto) 1fr;
+    align-items: center; /* This handles vertical alignment of the fields */
+    gap: calc(var(--spacing-unit) * 0.75);
+}
+.stepItemEditor .inputGroup.twoColumn label {
+    margin-bottom: 0;
+    padding-right: calc(var(--spacing-unit) * 0.5);
+    text-align: left;
+}
+.stepItemEditor .inputGroup.twoColumn input[type="number"] {
+    max-width: 90px; /* MODIFIED: Consistent small size for number inputs in steps */
+}
+
+
+/* Recipe Management (Left Column) - MOVED TO BOTTOM */
+.recipeManagementGroup {
+    margin-bottom: 0; /* No margin at the very bottom */
+    margin-top: auto; 
+    padding-top: calc(var(--spacing-unit) * 1.5); 
+    border-top: 1px solid var(--color-border); 
+}
+.recipeManagementGroup h3 {
+    margin-top: 0;
+    margin-bottom: var(--spacing-unit);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: calc(var(--spacing-unit)*0.75);
+    font-size: 1.1rem;
+}
+
+.actionsGroup {
+    display: flex;
+    gap: calc(var(--spacing-unit)*0.75);
+    margin-top: var(--spacing-unit);
+    flex-wrap: wrap;
+}
+
+.mainActions button {
+    flex-grow: 1;
+    min-width: 120px; 
+    padding: calc(var(--spacing-unit) * 0.9) calc(var(--spacing-unit) * 1.8);
+    font-size: 0.85rem; 
+}
+
+.buttonDanger {
+    background-color: var(--color-error) !important;
+}
+.buttonDanger:hover {
+    background-color: darkred !important;
+}
+
+.buttonSecondary {
+    background-color: #6c757d !important;
+    color: white !important;
+}
+.buttonSecondary:hover {
+    background-color: #5a6268 !important;
+}
+
+
+/* Results Group (Left Column) - MORE PROMINENT and MOVED TO TOP */
+.resultsGroup {
+    order: -1; /* MODIFIED: Visually move this section to the top of its flex container */
+    margin-top: 0; 
+    margin-bottom: calc(var(--spacing-unit) * 2.5); /* Increased space below results */
+    padding: calc(var(--spacing-unit) * 1.5); 
+    border: 2px solid var(--color-primary); /* MODIFIED: More prominent border */
+    border-radius: var(--border-radius-medium);
+    background-color: var(--color-secondary); 
+}
+.resultsGroup h3 {
+    margin-top: 0;
+    margin-bottom: calc(var(--spacing-unit) * 1.5); /* Increased margin */
+    font-size: 1.3rem; /* MODIFIED: Larger font for this heading */
+    color: var(--color-primary-darker);
+    text-align: center;
+    border-bottom: none; 
+}
+.resultItem {
+    display: flex;
+    justify-content: space-between;
+    padding: calc(var(--spacing-unit) * 0.75) 0; /* MODIFIED: Increased padding */
+    font-size: 1.05rem; /* MODIFIED: Larger font for result items */
+}
+.resultItem.total {
+    font-weight: bold;
+    font-size: 1.15rem; /* MODIFIED: Even larger for total */
+    color: var(--color-primary-darker);
+    border-top: 1px solid var(--color-border);
+    margin-top: var(--spacing-unit); /* Adjusted margin */
+    padding-top: var(--spacing-unit); /* Adjusted padding */
+}
+.resultItem span:first-child {
+    color: var(--color-text); 
+    font-weight: 500;
+}
+.resultItem span:last-child {
+    font-weight: bold;
+}
+
+
+/* Steps Column (Right Column) */
+.stepsColumn h3 {
+    font-size: 1.1rem; 
+    margin-bottom: var(--spacing-unit);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: calc(var(--spacing-unit)*0.75);
+}
+
+.stepsManagementSection {
+    margin-top: 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.stepItemEditor {
+    background-color: var(--color-surface-alt, #fdfdfd);
+    border: 1px solid var(--color-border);
+    padding: var(--spacing-unit); 
+    border-radius: var(--border-radius-small); 
+    box-shadow: 0 1px 4px rgba(0,0,0,0.04); 
+    margin-bottom: var(--spacing-unit); 
+}
+
+.stepHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: calc(var(--spacing-unit) * 1); 
+}
+.stepHeader h4 {
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: calc(var(--spacing-unit) * 0.75); 
+    font-size: 1rem; 
+    flex-grow: 1;
+}
+.stepTypeSelect {
+   flex-grow: 1;
+   max-width: 200px; 
+   font-size: 0.85rem; 
+   padding: calc(var(--spacing-unit) * 0.75); 
+}
+
+.removeStepBtn {
+    background-color: transparent;
+    color: var(--color-error);
+    border: 1px solid var(--color-error);
+    padding: calc(var(--spacing-unit) * 0.4) calc(var(--spacing-unit) * 0.8); 
+    font-size: 0.75rem; 
+    border-radius: var(--border-radius-small);
+    cursor: pointer;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+.removeStepBtn:hover {
+    background-color: rgba(var(--color-error-rgb, 176, 0, 32), 0.1);
+}
+.removeStepBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.addStepButton {
+    display: block;
+    width: 100%;
+    margin-top: var(--spacing-unit);
+    padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 1.5); 
+    font-size: 0.9rem; 
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 900px) { 
+    .recipeCalculatorLayout {
+        flex-direction: column;
+    }
+    .recipeDetailsColumn,
+    .stepsColumn {
+        min-width: 100%; 
+        flex-basis: auto; 
+    }
+    .recipeDetailsColumn .inputGroup.twoColumn {
+        grid-template-columns: minmax(120px, auto) 1fr;
+    }
+     .recipeDetailsColumn .inputGroup.twoColumn label {
+        text-align: left; 
+    }
+     .recipeManagementGroup { /* Ensure it doesn't push other content away weirdly when stacked */
+        margin-top: calc(var(--spacing-unit) * 2); 
+        border-top: 1px solid var(--color-border); /* Add border when stacked if it wasn't there */
+    }
+    .resultsGroup {
+        order: 0; /* Reset order for stacked layout if desired, or keep -1 if it should always be first */
+    }
+}
+
+@media (max-width: 600px) {
+    .recipeCalculatorLayout {
+        padding: var(--spacing-unit);
+    }
+    .mainTitle {
+        font-size: 1.6rem;
+    }
+    .recipeDetailsColumn .inputGroup.twoColumn,
+    .stepItemEditor .inputGroup.twoColumn {
+        grid-template-columns: 1fr; 
+    }
+    .recipeDetailsColumn .inputGroup.twoColumn label,
+    .stepItemEditor .inputGroup.twoColumn label {
+        text-align: left;
+        margin-bottom: calc(var(--spacing-unit) * 0.25);
+        padding-right: 0;
+    }
+    .inputGroup input[type="number"] { 
+        max-width: none;
+    }
+
+    .stepHeader h4 {
+        flex-direction: column;
+        align-items: flex-start;
+        font-size: 0.95rem;
+    }
+    .stepTypeSelect {
+        width: 100%;
+        max-width: none;
+        margin-top: calc(var(--spacing-unit) * 0.5);
+    }
+}
