@@ -1,93 +1,223 @@
 /* src/RecipeCalculator.css */
+
+/* ... (Previous styles for .recipe-calculator, h2, h3, hr, 
+          .recipe-calculator-layout, .recipe-column-left, .recipe-column-right,
+          .recipe-calculator .input-group, .recipe-column-left .input-group.two-column,
+          .recipe-management-group,
+          .actions-group, .button-danger, .button-secondary,
+          .results-group, .result-item, feedback messages
+          REMAIN LARGELY THE SAME from the last good CSS update) ... */
+
+/* --- Ensure these base styles are present or adjusted from last good CSS update --- */
 .recipe-calculator {
-    font-family: sans-serif;
-    width: 450px; /* Increased width a bit for two columns */
-    margin: 20px auto;
-    padding: 20px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
+  background-color: var(--color-surface);
+  padding: calc(var(--spacing-unit) * 2);
+  border-radius: var(--border-radius-medium);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--color-border);
+  margin: calc(var(--spacing-unit) * 2) auto;
+  max-width: 1100px; 
 }
 
 .recipe-calculator h2 {
-    text-align: center;
-    color: #333;
-    margin-bottom: 25px; /* Added more margin */
+  text-align: center;
+  margin-bottom: calc(var(--spacing-unit) * 3);
 }
 
-.input-group { /* General styling for input groups if not two-column */
-    margin-bottom: 15px;
+.recipe-calculator h3 {
+  margin-top: 0;
+  margin-bottom: calc(var(--spacing-unit) * 2);
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: var(--spacing-unit);
 }
 
-.input-group label { /* General label styling */
-    display: block;
-    margin-bottom: 5px;
-    color: #555;
-    font-size: 0.9em; /* Slightly smaller label */
+.recipe-calculator-layout {
+  display: flex;
+  flex-wrap: nowrap; 
+  gap: calc(var(--spacing-unit) * 3);
 }
 
-.input-group input { /* General input styling */
-    width: calc(100% - 22px); /* Account for padding and border */
-    padding: 8px 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-sizing: border-box;
-    text-align: right; /* Right-align text in all number inputs */
+.recipe-column-left {
+  flex: 1 1 380px; 
+  min-width: 280px;
 }
 
-/* Styles for two-column layout */
-.input-group.two-column {
-    display: flex;
-    align-items: center;
-    justify-content: space-between; /* Puts space between label and input */
-    margin-bottom: 12px;
+.recipe-column-right {
+  flex: 1.5 1 calc(100% - 380px - (var(--spacing-unit) * 3)); 
+  min-width: 320px; 
+  display: flex; 
+  flex-direction: column;
+}
+/* --- End base styles section --- */
+
+
+/* Steps Management Section (Right Column) */
+.steps-management-section {
+  margin-top: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.input-group.two-column label {
-    flex-grow: 1; /* Allows label to take up space */
-    margin-bottom: 0;
-    padding-right: 10px; /* Space before the input */
-    text-align: left; /* Keep labels left-aligned */
+.step-item-editor-draggable-wrapper {
+  margin-bottom: calc(var(--spacing-unit) * 1.5); /* Reduced margin */
+  cursor: grab;
+  width: 100%; 
+  box-sizing: border-box;
 }
 
-.input-group.two-column input {
-    flex-basis: 100px; /* Give input a specific base width */
-    flex-grow: 0; /* Don't let it grow beyond its basis */
-    width: 100px; /* Explicit width */
+.step-item-editor-draggable-wrapper:active {
+  cursor: grabbing;
 }
 
-.results-group {
-    margin-top: 25px;
-    padding-top: 15px;
-    border-top: 1px dashed #eee;
+.step-item-editor-content {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: calc(var(--spacing-unit) * 1.5); /* Reduced padding for compactness */
+  border-radius: var(--border-radius-small); /* Smaller radius */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06); /* Softer shadow */
+  width: 100%; 
+  box-sizing: border-box;
 }
 
-.results-group h3 {
-    margin-top: 0;
-    margin-bottom: 10px;
-    color: #333;
+.step-item-editor h4 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-unit); /* Reduced margin */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1rem; /* Slightly smaller heading */
+  gap: var(--spacing-unit); 
+}
+.step-item-editor h4 span { 
+    flex-shrink: 0; 
+    font-weight: bold; /* Make step name more prominent */
 }
 
-.result-item {
-    display: flex;
-    justify-content: space-between; /* Label on left, value on right */
-    padding: 6px 0; /* A bit of vertical padding */
-    font-size: 0.95em;
-    color: #444;
+.step-item-editor h4 select {
+  padding: calc(var(--spacing-unit) * 0.5); /* Smaller padding */
+  font-size: 0.9rem; /* Smaller font */
+  flex-grow: 1; 
+  min-width: 120px; /* Adjusted min-width */
+  height: auto; /* Ensure height is not overly large */
 }
 
-.result-item span:last-child {
-    text-align: right; /* Ensure the numeric value is right-aligned */
-    font-weight: 500;
+/* New grid for step fields to place label and input side-by-side */
+.step-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); /* Responsive columns for fields */
+  gap: var(--spacing-unit);
+  margin-bottom: var(--spacing-unit);
 }
 
-.result-item.total {
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid #eee;
+.step-item-editor .input-group.compact {
+  display: flex; /* For label and input side-by-side */
+  flex-direction: row; /* Horizontal layout */
+  align-items: center; /* Align items vertically */
+  gap: calc(var(--spacing-unit) * 0.75);
+  margin-bottom: calc(var(--spacing-unit) * 0.5); /* Reduced margin for compact groups */
 }
 
-.result-item.total strong {
-    color: #000;
-    font-weight: bold;
+.step-item-editor .input-group.compact label {
+  margin-bottom: 0; /* Remove bottom margin as it's side-by-side */
+  font-size: 0.85rem; /* Smaller label */
+  white-space: nowrap; /* Prevent label wrapping */
+  flex-shrink: 0; /* Prevent label from shrinking */
+}
+
+.step-item-editor .input-group.compact input[type="number"] {
+  flex-grow: 1; /* Allow input to take remaining space */
+  padding: calc(var(--spacing-unit) * 0.75); /* Reduced padding */
+  font-size: 0.9rem; /* Smaller font */
+  width: auto; /* Let flexbox handle width */
+  min-width: 60px; /* Ensure it's not too small */
+  margin-bottom: 0; /* Remove bottom margin */
+}
+
+/* Notes field remains label on top */
+.step-item-editor .input-group:not(.compact) label { /* For the notes label */
+    font-size: 0.85rem;
+    margin-bottom: calc(var(--spacing-unit) * 0.5);
+}
+.step-item-editor .input-group textarea {
+  min-height: 40px; /* Reduced min-height */
+  font-size: 0.9rem;
+  padding: calc(var(--spacing-unit) * 0.75);
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.step-item-editor .button-remove {
+  background-color: transparent;
+  color: var(--color-error);
+  border: 1px solid var(--color-error);
+  padding: calc(var(--spacing-unit) * 0.5) var(--spacing-unit); /* Smaller padding */
+  font-size: 0.8rem; 
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  border-radius: var(--border-radius-small);
+  line-height: 1; 
+  margin-left: auto; 
+  flex-shrink: 0; 
+}
+
+.step-item-editor .button-remove:hover {
+  background-color: rgba(var(--color-error-rgb, 176, 0, 32), 0.08);
+  color: var(--color-error);
+  transform: translateY(0);
+}
+
+.steps-management-section > button { /* Add Step Button */
+  display: block;
+  margin: var(--spacing-unit) 0 0 0; /* Reduced top margin */
+  padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 1.5); /* Slightly smaller */
+  font-size: 0.9rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) { 
+  .recipe-calculator-layout {
+    flex-direction: column;
+    flex-wrap: wrap; 
+  }
+  .recipe-column-left,
+  .recipe-column-right {
+    flex-basis: 100%; 
+    width: 100%;
+    min-width: auto; 
+  }
+  .recipe-calculator {
+    padding: calc(var(--spacing-unit) * 1.5);
+    max-width: 600px; 
+  }
+   .recipe-column-left .input-group.two-column {
+    flex-direction: column; 
+    align-items: stretch;
+  }
+  .recipe-column-left .input-group.two-column label {
+    margin-bottom: calc(var(--spacing-unit) * 0.5);
+    padding-right: 0;
+  }
+  .recipe-column-left .input-group.two-column input {
+    width: 100%; 
+  }
+}
+
+@media (max-width: 520px) { /* Adjusted breakpoint for stacking step fields */
+    .step-fields-grid {
+        grid-template-columns: 1fr; /* Stack all step fields */
+    }
+    .step-item-editor .input-group.compact {
+        flex-direction: column; /* Stack label above input */
+        align-items: flex-start;
+    }
+    .step-item-editor .input-group.compact label {
+        margin-bottom: calc(var(--spacing-unit) * 0.25);
+    }
+    .step-item-editor .input-group.compact input[type="number"] {
+        width: 100%; /* Full width when stacked */
+    }
+    .recipe-calculator {
+        padding: var(--spacing-unit);
+    }
 }

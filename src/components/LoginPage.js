@@ -1,7 +1,8 @@
 // src/components/LoginPage.js (Updated)
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import AuthService from '../services/AuthService'; // Import the service
+import { useNavigate, Link } from 'react-router-dom';
+import AuthService from '../services/AuthService';
+import './AuthForm.css'; // Make sure this CSS file is created
 
 function LoginPage({ onLoginSuccess }) {
     const [email, setEmail] = useState('');
@@ -16,13 +17,13 @@ function LoginPage({ onLoginSuccess }) {
         setError('');
 
         try {
-            const data = await AuthService.login(email, password); // Use the service
+            const data = await AuthService.login(email, password);
             console.log('Login successful via AuthService:', data);
             
             if (onLoginSuccess) {
-                onLoginSuccess(data.user, data.token); // Notify App.js or context
+                onLoginSuccess(data.user, data.token);
             }
-            navigate('/'); // Redirect
+            navigate('/'); // Redirect to home or dashboard
         } catch (err) {
             console.error('Login failed via AuthService:', err);
             setError(err.message || 'Failed to login. Please check your credentials.');
@@ -32,24 +33,43 @@ function LoginPage({ onLoginSuccess }) {
     };
 
     return (
-        <div className="auth-page">
-            <h2>Login</h2>
-            <form onSubmit={handleSubmit}>
-                {/* Form inputs remain the same */}
-                <div className="input-group">
-                    <label htmlFor="login-email">Email:</label>
-                    <input type="email" id="login-email" value={email} onChange={(e) => setEmail(e.target.value)} required disabled={isLoading} />
+        <div className="auth-form-container">
+            <div className="auth-form">
+                <h2>Login</h2>
+                {error && <p className="error-message">{error}</p>}
+                <form onSubmit={handleSubmit}>
+                    <div className="input-group">
+                        <label htmlFor="login-email">Email:</label>
+                        <input 
+                            type="email" 
+                            id="login-email" 
+                            value={email} 
+                            onChange={(e) => setEmail(e.target.value)} 
+                            required 
+                            disabled={isLoading} 
+                            placeholder="Enter your email"
+                        />
+                    </div>
+                    <div className="input-group">
+                        <label htmlFor="login-password">Password:</label>
+                        <input 
+                            type="password" 
+                            id="login-password" 
+                            value={password} 
+                            onChange={(e) => setPassword(e.target.value)} 
+                            required 
+                            disabled={isLoading}
+                            placeholder="Enter your password"
+                        />
+                    </div>
+                    <button type="submit" disabled={isLoading}>
+                        {isLoading ? 'Logging in...' : 'Login'}
+                    </button>
+                </form>
+                <div className="form-link">
+                    Don't have an account? <Link to="/register">Register</Link>
                 </div>
-                <div className="input-group">
-                    <label htmlFor="login-password">Password:</label>
-                    <input type="password" id="login-password" value={password} onChange={(e) => setPassword(e.target.value)} required disabled={isLoading} />
-                </div>
-                {error && <p className="error-message" style={{color: 'red'}}>{error}</p>}
-                <button type="submit" disabled={isLoading}>
-                    {isLoading ? 'Logging in...' : 'Login'}
-                </button>
-            </form>
-            {/* Link to register page */}
+            </div>
         </div>
     );
 }
