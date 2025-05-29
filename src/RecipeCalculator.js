@@ -7,32 +7,24 @@ import RecipeFields from './components/RecipeFields';
 import RecipeManagementActions from './components/RecipeManagementActions';
 import RecipeResults from './components/RecipeResults';
 import StepsColumn from './components/StepsColumn';
+import BaseTemplates from './components/BaseTemplates'; // Import the new component
 
 import styles from './components/RecipeCalculator.module.css';
 import { useAuth } from './contexts/AuthContext';
 import { useData } from './contexts/DataContext';
 
-// --- Constants ---
-const LEVAIN_BUILD_STEP_NAME = 'Levain Build'; 
+// Import from new files
+import {
+    LEVAIN_BUILD_STEP_NAME,
+    INITIAL_RECIPE_FIELDS,
+    DEFAULT_LEVAIN_STEP_TEMPLATE
+} from './constants/recipeConstants'; // Assuming constants are in src/constants
 
-const INITIAL_RECIPE_FIELDS = {
-    recipe_id: null,
-    recipe_name: 'My New Sourdough',
-    description: '',
-    targetDoughWeight: '1000',
-    hydrationPercentage: '70',
-    saltPercentage: '2.0',
-    steps: []
-};
-
-const DEFAULT_LEVAIN_STEP_TEMPLATE = { 
-    step_name: LEVAIN_BUILD_STEP_NAME,
-    duration_override: null,
-    notes: 'Build the levain for the main dough.',
-    target_temperature_celsius: 24,
-    contribution_pct: 20,
-    target_hydration: 100,
-};
+import {
+    calculateRecipe,
+    processRecipeSteps,
+    getStepDnDId
+} from './utils/recipeUtils'; // Assuming utils are in src/utils
 
 const initialState = {
     ...INITIAL_RECIPE_FIELDS,
@@ -55,32 +47,20 @@ function recipeReducer(state, action) {
         case 'SET_RECIPE_FIELD':
             return { ...state, [action.field]: action.payload, feedbackMessage: { type: '', text: '' } };
         case 'SET_FULL_RECIPE_FORM': {
-            const { predefinedSteps } = action.payload; 
-            const processedSteps = (action.payload.recipeData.steps || []).map((step, index) => {
-                const predefined = predefinedSteps.find(ps => ps.step_id === step.step_id);
-                return {
-                    ...step,
-                    step_name: step.step_name || (predefined ? predefined.step_name : `Unknown Step ID ${step.step_id}`),
-                    duration_override: step.duration_override != null ? Number(step.duration_override) : null,
-                    target_temperature_celsius: step.target_temperature_celsius != null ? Number(step.target_temperature_celsius) : null,
-                    contribution_pct: step.contribution_pct != null ? Number(step.contribution_pct) : null,
-                    target_hydration: step.target_hydration != null ? Number(step.target_hydration) : null,
-                    stretch_fold_interval_minutes: step.stretch_fold_interval_minutes != null ? Number(step.stretch_fold_interval_minutes) : null,
-                    temp_client_id: step.recipe_step_id ? null : (step.temp_client_id || Date.now() + index + Math.random()),
-                };
-            });
+            const { predefinedSteps, recipeData } = action.payload;
+            const processedSteps = processRecipeSteps(recipeData.steps || [], predefinedSteps);
             return {
                 ...state,
-                recipe_name: action.payload.recipeData.recipe_name,
-                description: action.payload.recipeData.description,
-                targetDoughWeight: String(action.payload.recipeData.targetDoughWeight),
-                hydrationPercentage: String(action.payload.recipeData.hydrationPercentage),
-                saltPercentage: String(parseFloat(action.payload.recipeData.saltPercentage).toFixed(1)),
+                recipe_name: recipeData.recipe_name,
+                description: recipeData.description,
+                targetDoughWeight: String(recipeData.targetDoughWeight),
+                hydrationPercentage: String(recipeData.hydrationPercentage),
+                saltPercentage: String(parseFloat(recipeData.saltPercentage).toFixed(1)),
                 steps: processedSteps,
-                currentRecipeId: action.payload.recipeData.recipe_id || null,
-                selectedRecipeToLoad: String(action.payload.recipeData.recipe_id || ''),
-                isInTemplateMode: false, 
-                activeTemplateId: null, 
+                currentRecipeId: recipeData.recipe_id || null,
+                selectedRecipeToLoad: String(recipeData.recipe_id || ''),
+                isInTemplateMode: false,
+                activeTemplateId: null,
                 feedbackMessage: { type: '', text: '' },
             };
         }
@@ -105,7 +85,7 @@ function recipeReducer(state, action) {
                             updatedStep.target_hydration = levainDefault.target_hydration;
                             updatedStep.duration_override = levainDefault.duration_override ?? predefined?.defaultDurationMinutes;
                         } else if (Number(action.payload.step_id) === bulkFermentStepIdDynamic) {
-                            updatedStep.stretch_fold_interval_minutes = 30; 
+                            updatedStep.stretch_fold_interval_minutes = 30;
                         }
                     }
                     return updatedStep;
@@ -137,7 +117,7 @@ function recipeReducer(state, action) {
                     defaultNewStepData.target_hydration = levainDefault.target_hydration;
                     defaultNewStepData.duration_override = levainDefault.duration_override ?? firstPredefined.defaultDurationMinutes;
                 } else if (firstPredefined.step_id === bulkFermentStepIdDynamic) {
-                    defaultNewStepData.stretch_fold_interval_minutes = 30; 
+                    defaultNewStepData.stretch_fold_interval_minutes = 30;
                 }
             }
             return {
@@ -164,22 +144,20 @@ function recipeReducer(state, action) {
             return { ...state, isLoadingBaseTemplates: action.payload };
         case 'LOAD_TEMPLATE_DATA': {
             const templateData = action.payload.template;
-            const { predefinedSteps } = action.additionalData; 
-            const processedSteps = (templateData.steps || []).map((step, index) => {
-                const predefined = predefinedSteps.find(ps => ps.step_id === step.step_id);
+            const { predefinedSteps } = action.additionalData;
+
+            const baseProcessedSteps = processRecipeSteps(templateData.steps || [], predefinedSteps);
+
+            const finalProcessedSteps = baseProcessedSteps.map(step => {
+                const predefinedStep = predefinedSteps.find(ps => ps.step_id === step.step_id);
                 return {
                     ...step,
-                    recipe_step_id: undefined, 
-                    temp_client_id: Date.now() + index + Math.random(), 
-                    step_name: step.step_name || (predefined ? predefined.step_name : `Unknown Step ID ${step.step_id}`),
-                    duration_override: step.duration_override != null ? Number(step.duration_override) : (predefined?.defaultDurationMinutes ?? null),
-                    target_temperature_celsius: step.target_temperature_celsius != null ? Number(step.target_temperature_celsius) : null,
-                    contribution_pct: step.contribution_pct != null ? Number(step.contribution_pct) : null,
-                    target_hydration: step.target_hydration != null ? Number(step.target_hydration) : null,
-                    stretch_fold_interval_minutes: step.stretch_fold_interval_minutes != null ? Number(step.stretch_fold_interval_minutes) : null,
-                    notes: step.notes || (predefined ? predefined.description : '') || '',
+                    recipe_step_id: undefined, // Ensure it's treated as a new step from a template
+                    // temp_client_id is handled by processRecipeSteps
+                    notes: step.notes || (predefinedStep ? predefinedStep.description : '') || '',
                 };
             });
+
             return {
                 ...state,
                 recipe_name: templateData.recipe_name ? `${templateData.recipe_name} (Copy)` : 'New Recipe from Template',
@@ -187,22 +165,22 @@ function recipeReducer(state, action) {
                 targetDoughWeight: String(templateData.targetDoughWeight || INITIAL_RECIPE_FIELDS.targetDoughWeight),
                 hydrationPercentage: String(templateData.hydrationPercentage || INITIAL_RECIPE_FIELDS.hydrationPercentage),
                 saltPercentage: String(parseFloat(templateData.saltPercentage || INITIAL_RECIPE_FIELDS.saltPercentage).toFixed(1)),
-                steps: processedSteps,
-                currentRecipeId: null, 
-                selectedRecipeToLoad: '', 
+                steps: finalProcessedSteps,
+                currentRecipeId: null,
+                selectedRecipeToLoad: '',
                 isInTemplateMode: true,
-                activeTemplateId: action.payload.template.recipe_id, 
+                activeTemplateId: action.payload.template.recipe_id,
                 feedbackMessage: { type: '', text: `` },
             };
         }
         case 'CLEAR_FORM': {
-            const { predefinedSteps, levainStepIdDynamic } = action.payload; 
+            const { predefinedSteps, levainStepIdDynamic } = action.payload;
             const initialSteps = [];
             if (predefinedSteps && predefinedSteps.length > 0 && levainStepIdDynamic) {
                 const levainTemplate = predefinedSteps.find(ps => ps.step_id === levainStepIdDynamic && ps.step_name === LEVAIN_BUILD_STEP_NAME);
                 if (levainTemplate) {
                      initialSteps.push({
-                        ...DEFAULT_LEVAIN_STEP_TEMPLATE, 
+                        ...DEFAULT_LEVAIN_STEP_TEMPLATE,
                         step_id: levainTemplate.step_id,
                         step_name: levainTemplate.step_name,
                         duration_override: levainTemplate.defaultDurationMinutes ?? DEFAULT_LEVAIN_STEP_TEMPLATE.duration_override,
@@ -219,7 +197,7 @@ function recipeReducer(state, action) {
                 currentRecipeId: null,
                 selectedRecipeToLoad: '',
                 isInTemplateMode: false,
-                activeTemplateId: null, 
+                activeTemplateId: null,
                 feedbackMessage: { type: '', text: '' },
             };
         }
@@ -228,106 +206,9 @@ function recipeReducer(state, action) {
     }
 }
 
-// ... calculateRecipe function remains the same ...
-function calculateRecipe(targetDoughWeight, hydrationPercentage, saltPercentage, steps = [], levainStepId) {
-    if (targetDoughWeight <= 0) {
-        return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: 0 };
-    }
-    const targetDoughWeightNum = parseFloat(targetDoughWeight);
-    const hydrationPercentageNum = parseFloat(hydrationPercentage) / 100.0;
-    const saltPercentageNum = parseFloat(saltPercentage) / 100.0;
-
-    const levainStep = steps.find(step =>
-        step.step_id === levainStepId &&
-        step.contribution_pct != null &&
-        step.target_hydration != null
-    );
-
-    const starterPercentageNum = levainStep ? parseFloat(levainStep.contribution_pct) / 100.0 : 0;
-    const starterHydrationNum = levainStep ? parseFloat(levainStep.target_hydration) / 100.0 : 0;
-
-    if (isNaN(hydrationPercentageNum) || isNaN(saltPercentageNum)) { 
-        return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: 0 };
-    }
-    if (starterPercentageNum > 0 && (isNaN(starterHydrationNum) || (1 + starterHydrationNum) === 0)) {
-         return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: 0 };
-    }
-
-    let finalFlourWeight = 0;
-    let finalWaterWeight = 0;
-    let finalStarterWeight = 0;
-    let saltWeightValue = 0;
-    let totalFlourInRecipe = 0;
-
-    if ((1 + hydrationPercentageNum + saltPercentageNum) === 0 && targetDoughWeightNum > 0) {
-        return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: targetDoughWeightNum };
-    }
-    
-    if ((1 + hydrationPercentageNum + saltPercentageNum) !== 0) {
-        totalFlourInRecipe = targetDoughWeightNum / (1 + hydrationPercentageNum + saltPercentageNum);
-    }
-
-    if (starterPercentageNum > 0 && levainStep) { 
-        finalStarterWeight = totalFlourInRecipe * starterPercentageNum; 
-        const flourInStarter = finalStarterWeight / (1 + starterHydrationNum);
-        const waterInStarter = finalStarterWeight - flourInStarter;
-        
-        finalFlourWeight = totalFlourInRecipe - flourInStarter;
-        const totalWaterInRecipe = totalFlourInRecipe * hydrationPercentageNum;
-        finalWaterWeight = totalWaterInRecipe - waterInStarter;
-        saltWeightValue = totalFlourInRecipe * saltPercentageNum;
-    } else { 
-        finalFlourWeight = totalFlourInRecipe;
-        finalWaterWeight = finalFlourWeight * hydrationPercentageNum;
-        saltWeightValue = finalFlourWeight * saltPercentageNum;
-        finalStarterWeight = 0; 
-    }
-
-    const round = (num) => {
-        if (isNaN(num) || !isFinite(num)) return 0;
-        return Math.round(num);
-    }
-     const roundSalt = (num) => {
-        if (isNaN(num) || !isFinite(num)) return 0;
-        const val = parseFloat(num.toFixed(1));
-        return val < 0 ? 0 : val; 
-    }
-    
-    let ffw = round(finalFlourWeight < 0 ? 0 : finalFlourWeight);
-    let fww = round(finalWaterWeight < 0 ? 0 : finalWaterWeight);
-    let fsw = round(finalStarterWeight < 0 ? 0 : finalStarterWeight);
-    let swv = roundSalt(saltWeightValue < 0 ? 0 : saltWeightValue);
-
-    let calculatedTotal = ffw + fww + fsw + swv;
-    let adjustedWaterWeight = fww;
-
-    const diff = targetDoughWeightNum - calculatedTotal;
-    if (Math.abs(diff) > 0.1 && Math.abs(diff) < 25) { 
-        if (ffw > 0 || fsw > 0) { 
-             adjustedWaterWeight = round(fww + diff);
-             if (adjustedWaterWeight < 0) adjustedWaterWeight = 0; 
-        }
-    }
-    calculatedTotal = ffw + adjustedWaterWeight + fsw + swv;
-
-    return {
-        flourWeight: ffw,
-        waterWeight: adjustedWaterWeight,
-        starterWeight: fsw,
-        saltWeight: swv,
-        totalWeight: round(calculatedTotal > 0 ? calculatedTotal : 0) 
-    };
-}
-
-
-const getStepDnDId = (step) => step.recipe_step_id || step.temp_client_id;
-
 function RecipeCalculator() {
     const [state, dispatch] = useReducer(recipeReducer, initialState);
-    const {
-        isLoadingBaseTemplates,
-        activeTemplateId 
-    } = state;
+    const { isLoadingBaseTemplates, activeTemplateId } = state;
     const [calculationResults, setCalculationResults] = useState({
         flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: 0
     });
@@ -349,32 +230,19 @@ function RecipeCalculator() {
         saltPercentage: state.saltPercentage,
     };
 
-
     const handleRecipeFieldChange = (field, value) => {
         dispatch({ type: 'SET_RECIPE_FIELD', field, payload: value });
     };
 
     const processLoadedRecipeData = useCallback((recipeDataForProcessing) => {
-        const currentPredefinedSteps = predefinedSteps || []; 
-        const processedSteps = (recipeDataForProcessing.steps || []).map((step, index) => {
-            const predefined = currentPredefinedSteps.find(ps => ps.step_id === step.step_id);
-            return {
-                ...step,
-                step_name: step.step_name || (predefined ? predefined.step_name : `Unknown Step ID ${step.step_id}`),
-                duration_override: step.duration_override != null ? Number(step.duration_override) : null,
-                target_temperature_celsius: step.target_temperature_celsius != null ? Number(step.target_temperature_celsius) : null,
-                contribution_pct: step.contribution_pct != null ? Number(step.contribution_pct) : null,
-                target_hydration: step.target_hydration != null ? Number(step.target_hydration) : null,
-                stretch_fold_interval_minutes: step.stretch_fold_interval_minutes != null ? Number(step.stretch_fold_interval_minutes) : null,
-                temp_client_id: step.recipe_step_id ? null : (step.temp_client_id || Date.now() + index + Math.random()),
-            };
-        });
-        return { ...recipeDataForProcessing, steps: processedSteps, saltPercentage: parseFloat(recipeDataForProcessing.saltPercentage).toFixed(1) };
+        const currentPredefinedSteps = predefinedSteps || [];
+        const processedStepsData = processRecipeSteps(recipeDataForProcessing.steps || [], currentPredefinedSteps);
+        return { ...recipeDataForProcessing, steps: processedStepsData, saltPercentage: parseFloat(recipeDataForProcessing.saltPercentage).toFixed(1) };
     }, [predefinedSteps]);
 
     const handleClearForm = useCallback(() => {
         dispatch({ type: 'CLEAR_FORM', payload: { predefinedSteps, levainStepIdDynamic } });
-    }, [predefinedSteps, levainStepIdDynamic, dispatch]);
+    }, [predefinedSteps, levainStepIdDynamic]);
 
 
     const fetchUserRecipesList = useCallback(async () => {
@@ -392,7 +260,7 @@ function RecipeCalculator() {
         } finally {
             dispatch({ type: 'SET_LOADING', field: 'isLoadingRecipes', payload: false });
         }
-    }, [isLoggedIn, clearFeedback,  dispatch]); 
+    }, [isLoggedIn, clearFeedback]);
 
     useEffect(() => {
         if (isLoggedIn()) {
@@ -400,7 +268,7 @@ function RecipeCalculator() {
         } else {
             dispatch({ type: 'SET_FIELD', field: 'savedRecipes', payload: [] });
             if (predefinedSteps && predefinedSteps.length > 0 && levainStepIdDynamic) {
-                 handleClearForm(); 
+                 handleClearForm();
             }
         }
     }, [isLoggedIn, fetchUserRecipesList, handleClearForm, predefinedSteps, levainStepIdDynamic]);
@@ -411,9 +279,9 @@ function RecipeCalculator() {
             isLoggedIn() &&
             predefinedSteps && predefinedSteps.length > 0 &&
             levainStepIdDynamic &&
-            !state.currentRecipeId && 
-            state.steps.length === 0 && 
-            !state.isInTemplateMode 
+            !state.currentRecipeId &&
+            state.steps.length === 0 &&
+            !state.isInTemplateMode
         ) {
             handleClearForm();
         }
@@ -433,9 +301,9 @@ function RecipeCalculator() {
 
     useEffect(() => {
         const fetchBaseTemplates = async () => {
-            if (!isLoggedIn()) return; 
+            if (!isLoggedIn()) return;
             dispatch({ type: 'SET_LOADING_BASE_TEMPLATES', payload: true });
-            dispatch({ type: 'SET_FEEDBACK', payload: { type: '', text: '' } }); 
+            dispatch({ type: 'SET_FEEDBACK', payload: { type: '', text: '' } });
             try {
                 const templates = await RecipeService.getBaseRecipeTemplates();
                 dispatch({ type: 'SET_BASE_RECIPE_TEMPLATES', payload: templates || [] });
@@ -445,7 +313,7 @@ function RecipeCalculator() {
                     type: 'SET_FEEDBACK',
                     payload: { type: 'error', text: `Failed to load base templates: ${error.message}` }
                 });
-                 dispatch({ type: 'SET_BASE_RECIPE_TEMPLATES', payload: [] }); 
+                 dispatch({ type: 'SET_BASE_RECIPE_TEMPLATES', payload: [] });
             } finally {
                  dispatch({ type: 'SET_LOADING_BASE_TEMPLATES', payload: false });
             }
@@ -455,7 +323,7 @@ function RecipeCalculator() {
         } else {
             dispatch({ type: 'SET_BASE_RECIPE_TEMPLATES', payload: [] });
         }
-    }, [isLoggedIn, dispatch]); 
+    }, [isLoggedIn]);
 
     const handleLoadRecipeChange = async (event) => {
         clearFeedback();
@@ -469,7 +337,7 @@ function RecipeCalculator() {
         dispatch({ type: 'SET_LOADING', field: 'isLoadingRecipes', payload: true });
         try {
             const recipeDataFromApi = await RecipeService.getRecipeById(recipeIdToLoad);
-            const processedData = processLoadedRecipeData(recipeDataFromApi); 
+            const processedData = processLoadedRecipeData(recipeDataFromApi);
             dispatch({
                 type: 'SET_FULL_RECIPE_FORM',
                 payload: { recipeData: processedData, predefinedSteps: predefinedSteps || [] }
@@ -484,12 +352,12 @@ function RecipeCalculator() {
     };
 
      const handleLoadTemplateData = useCallback((template) => {
-        dispatch({ 
-            type: 'LOAD_TEMPLATE_DATA', 
-            payload: { template: template }, 
-            additionalData: { predefinedSteps: predefinedSteps || [] } 
+        dispatch({
+            type: 'LOAD_TEMPLATE_DATA',
+            payload: { template: template },
+            additionalData: { predefinedSteps: predefinedSteps || [] }
         });
-    }, [predefinedSteps, dispatch]); 
+    }, [predefinedSteps]);
 
     const handleSaveOrUpdateRecipe = async () => {
         clearFeedback();
@@ -519,8 +387,7 @@ function RecipeCalculator() {
                 }
             }
         }
-        
-        // *** MODIFICATION STARTS HERE ***
+
         const isAttemptingToSaveNew = !state.currentRecipeId || state.isInTemplateMode;
 
         if (isAttemptingToSaveNew) {
@@ -528,21 +395,18 @@ function RecipeCalculator() {
                 (recipe) => recipe.recipe_name === trimmedRecipeName
             );
             if (recipeNameExists) {
-                dispatch({ 
-                    type: 'SET_FEEDBACK', 
-                    payload: { type: 'error', text: `A recipe named "${trimmedRecipeName}" already exists. Please choose a different name.` } 
+                dispatch({
+                    type: 'SET_FEEDBACK',
+                    payload: { type: 'error', text: `A recipe named "${trimmedRecipeName}" already exists. Please choose a different name.` }
                 });
-                // If the error occurred while trying to save from a template,
-                // exit template mode to allow user to load another recipe or clear form.
                 if (state.isInTemplateMode) {
                     dispatch({ type: 'SET_FIELD', field: 'isInTemplateMode', payload: false });
-                    dispatch({ type: 'SET_FIELD', field: 'activeTemplateId', payload: null }); 
+                    dispatch({ type: 'SET_FIELD', field: 'activeTemplateId', payload: null });
                 }
-                dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: false }); // Reset saving loader
-                return; // Stop the save process
+                dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: false });
+                return;
             }
         }
-        // *** MODIFICATION ENDS HERE ***
 
         dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: true });
 
@@ -564,12 +428,12 @@ function RecipeCalculator() {
                 recipe_step_id: (state.currentRecipeId && !state.isInTemplateMode && step.recipe_step_id) ? step.recipe_step_id : undefined
             })),
         };
-        
+
         const isUpdatingExistingUserRecipe = state.currentRecipeId && !state.isInTemplateMode;
 
         try {
             let result;
-            if (isUpdatingExistingUserRecipe) { 
+            if (isUpdatingExistingUserRecipe) {
                 result = await RecipeService.updateRecipe(state.currentRecipeId, recipePayload);
                 dispatch({ type: 'SET_FEEDBACK', payload: { type: 'success', text: 'Recipe updated successfully!' } });
                 const updatedRecipeData = await RecipeService.getRecipeById(state.currentRecipeId);
@@ -579,19 +443,19 @@ function RecipeCalculator() {
                     payload: { recipeData: processedData, predefinedSteps: predefinedSteps || [] }
                 });
 
-            } else { 
+            } else {
                 result = await RecipeService.saveRecipe(recipePayload);
                 dispatch({ type: 'SET_FEEDBACK', payload: { type: 'success', text: 'Recipe saved successfully!' } });
-                
-                const newRecipeData = result.recipe; 
+
+                const newRecipeData = result.recipe;
                 const processedNewData = processLoadedRecipeData(newRecipeData);
 
                 dispatch({
-                    type: 'SET_FULL_RECIPE_FORM', 
+                    type: 'SET_FULL_RECIPE_FORM',
                     payload: { recipeData: processedNewData, predefinedSteps: predefinedSteps || [] }
                 });
             }
-            fetchUserRecipesList(); 
+            fetchUserRecipesList();
         } catch (error) {
             console.error("RecipeCalculator: Error saving/updating recipe:", error);
             dispatch({ type: 'SET_FEEDBACK', payload: { type: 'error', text: `Failed to save recipe: ${error.message}` } });
@@ -606,12 +470,12 @@ function RecipeCalculator() {
             return;
         }
         clearFeedback();
-        dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: true }); 
+        dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: true });
         try {
             await RecipeService.deleteRecipe(state.currentRecipeId);
             dispatch({ type: 'SET_FEEDBACK', payload: { type: 'success', text: 'Recipe deleted successfully!' } });
-            handleClearForm(); 
-            fetchUserRecipesList(); 
+            handleClearForm();
+            fetchUserRecipesList();
         } catch (error) {
             console.error("RecipeCalculator: Error deleting recipe:", error);
             dispatch({ type: 'SET_FEEDBACK', payload: { type: 'error', text: `Failed to delete recipe: ${error.message}` } });
@@ -634,7 +498,7 @@ function RecipeCalculator() {
     };
 
     const handleDeleteStep = (indexToDelete) => dispatch({ type: 'DELETE_STEP', index: indexToDelete });
-    
+
     function handleDragEnd(event) {
         const { active, over } = event;
         if (active && over && active.id !== over.id) {
@@ -661,39 +525,16 @@ function RecipeCalculator() {
                     {state.feedbackMessage.text}
                 </p>
             )}
-            
-            {isLoggedIn() && !isLoadingPredefinedSteps && state.baseRecipeTemplates && state.baseRecipeTemplates.length > 0 && (
-                <div className={styles.baseTemplatesSection}>
-                    <h3>Start with a Template</h3>
-                    <p className={styles.templateIntroText}>
-                        Select one of our professionally designed sourdough templates to get started.
-                        You can adjust the dough weight and then save it as your own recipe.
-                    </p>
-                    <div className={styles.templateCardsContainer}>
-                        {state.baseRecipeTemplates.map(template => (
-                            <div
-                                key={template.recipe_id}
-                                className={`${styles.templateCard} ${template.recipe_id === state.activeTemplateId ? styles.templateCardActive : ''}`}
-                                onClick={() => handleLoadTemplateData(template)}
-                                role="button"
-                                tabIndex={0}
-                                onKeyPress={(e) => { if (e.key === 'Enter' || e.key === ' ') handleLoadTemplateData(template); }}
-                            >
-                                <div className={styles.templateCardContent}>
-                                    <h4>{template.recipe_name}</h4>
-                                    <p>{template.description || "A great starting point for your sourdough journey."}</p>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    {state.isInTemplateMode && (
-                        <div className={styles.templateModeBanner}>
-                            <p><strong>Template Mode:</strong> You are viewing a base template. Adjust inputs and "Save as New Recipe".</p>
-                        </div>
-                    )}
-                </div>
+
+            {isLoggedIn() && (predefinedSteps && predefinedSteps.length > 0) && (
+                 <BaseTemplates
+                    baseRecipeTemplates={state.baseRecipeTemplates}
+                    isLoadingBaseTemplates={isLoadingBaseTemplates}
+                    activeTemplateId={activeTemplateId}
+                    onLoadTemplateData={handleLoadTemplateData}
+                    isInTemplateMode={state.isInTemplateMode}
+                />
             )}
-             {isLoggedIn() && isLoadingBaseTemplates && <p className={styles.loadingMessage}>Loading templates...</p>}
 
             <div className={styles.recipeCalculatorLayout}>
                 <div className={styles.recipeDetailsColumn}>
@@ -711,8 +552,8 @@ function RecipeCalculator() {
                     <RecipeResults results={calculationResults} />
                     <div className={styles.manageRecipesSection}>
                          <RecipeManagementActions
-                            recipeName={state.recipe_name} 
-                            description={state.description} 
+                            recipeName={state.recipe_name}
+                            description={state.description}
                             onRecipeNameChange={(value) => handleRecipeFieldChange('recipe_name', value)}
                             onDescriptionChange={(value) => handleRecipeFieldChange('description', value)}
                             savedRecipes={state.savedRecipes}
@@ -725,7 +566,7 @@ function RecipeCalculator() {
                             isSaving={state.isSaving}
                             currentRecipeId={state.currentRecipeId}
                             clearFeedback={clearFeedback}
-                            isInTemplateMode={state.isInTemplateMode} 
+                            isInTemplateMode={state.isInTemplateMode}
                         />
                     </div>
                 </div>

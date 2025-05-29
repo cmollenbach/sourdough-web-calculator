@@ -51,7 +51,6 @@ const AuthService = {
         localStorage.removeItem(USER_KEY);
         // If you implement a backend logout endpoint, call it here too.
         // For example: await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST', headers: this.getAuthHeader() });
-        console.log("User logged out, token and user info removed.");
     },
 
     getToken() {
@@ -63,7 +62,8 @@ const AuthService = {
         try {
             return user ? JSON.parse(user) : null;
         } catch (error) {
-            console.error("Error parsing user from localStorage", error);
+            // Optionally, you could log this to a more robust error tracking service in production
+            // For client-side, often just returning null or a default is sufficient.
             return null;
         }
     },
@@ -71,9 +71,8 @@ const AuthService = {
     isLoggedIn() {
         const token = this.getToken();
         // Basic check: does a token exist?
-        // You could add token expiry check here using a JWT decoding library (e.g., jwt-decode)
-        // but true validation happens on the backend.
-        return !!token; 
+        // True validation happens on the backend.
+        return !!token;
     },
 
     getAuthHeader() {
