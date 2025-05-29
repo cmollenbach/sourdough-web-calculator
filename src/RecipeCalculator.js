@@ -143,36 +143,68 @@ function recipeReducer(state, action) {
         case 'SET_LOADING_BASE_TEMPLATES':
             return { ...state, isLoadingBaseTemplates: action.payload };
         case 'LOAD_TEMPLATE_DATA': {
-            const templateData = action.payload.template;
-            const { predefinedSteps } = action.additionalData;
+    const templateData = action.payload.template;
+    const { predefinedSteps } = action.additionalData;
 
-            const baseProcessedSteps = processRecipeSteps(templateData.steps || [], predefinedSteps);
+    // Directly process template steps to ensure new temp_client_ids are generated
+    const finalProcessedSteps = (templateData.steps || []).map((rawStep, index) => {
+        const predefined = predefinedSteps.find(ps => ps.step_id === rawStep.step_id);
+        // Basic properties from processRecipeSteps
+        const step = {
+            ...rawStep,
+            step_name: rawStep.step_name || (predefined ? predefined.step_name : `Unknown Step ID ${rawStep.step_id}`),
+            duration_override: rawStep.duration_override != null ? Number(rawStep.duration_override) : null,
+            target_temperature_celsius: rawStep.target_temperature_celsius != null ? Number(rawStep.target_temperature_celsius) : null,
+            contribution_pct: rawStep.contribution_pct != null ? Number(rawStep.contribution_pct) : null,
+            target_hydration: rawStep.target_hydration != null ? Number(rawStep.target_hydration) : null,
+            stretch_fold_interval_minutes: rawStep.stretch_fold_interval_minutes != null ? Number(rawStep.stretch_fold_interval_minutes) : null,
+            notes: rawStep.notes || (predefined ? predefined.description : '') || '', // Use predefined description as fallback for notes
+            
+            // --- Critical change here ---
+            recipe_step_id: undefined, // Mark as not having a DB ID for this new instance
+            temp_client_id: Date.now() + index + Math.random() + '_template_step', // Ensure a NEW unique client ID
+        };
+        
+        // If it's a levain step, apply defaults if specific values aren't on the template step
+        // This mirrors logic that might be in your UPDATE_STEP or ADD_STEP for levain
+        const levainStepIdDynamic = action.additionalData.levainStepIdDynamic; // Assuming you pass this in additionalData
+        if (Number(step.step_id) === levainStepIdDynamic) {
+            const levainDefaultFromPredefined = predefinedSteps.find(ps => ps.step_id === levainStepIdDynamic);
+            const levainDefault = levainDefaultFromPredefined || DEFAULT_LEVAIN_STEP_TEMPLATE; // Fallback to constant
 
-            const finalProcessedSteps = baseProcessedSteps.map(step => {
-                const predefinedStep = predefinedSteps.find(ps => ps.step_id === step.step_id);
-                return {
-                    ...step,
-                    recipe_step_id: undefined, // Ensure it's treated as a new step from a template
-                    // temp_client_id is handled by processRecipeSteps
-                    notes: step.notes || (predefinedStep ? predefinedStep.description : '') || '',
-                };
-            });
-
-            return {
-                ...state,
-                recipe_name: templateData.recipe_name ? `${templateData.recipe_name} (Copy)` : 'New Recipe from Template',
-                description: templateData.description || '',
-                targetDoughWeight: String(templateData.targetDoughWeight || INITIAL_RECIPE_FIELDS.targetDoughWeight),
-                hydrationPercentage: String(templateData.hydrationPercentage || INITIAL_RECIPE_FIELDS.hydrationPercentage),
-                saltPercentage: String(parseFloat(templateData.saltPercentage || INITIAL_RECIPE_FIELDS.saltPercentage).toFixed(1)),
-                steps: finalProcessedSteps,
-                currentRecipeId: null,
-                selectedRecipeToLoad: '',
-                isInTemplateMode: true,
-                activeTemplateId: action.payload.template.recipe_id,
-                feedbackMessage: { type: '', text: `` },
-            };
+            step.contribution_pct = step.contribution_pct ?? levainDefault.contribution_pct;
+            step.target_hydration = step.target_hydration ?? levainDefault.target_hydration;
+            // Duration might also come from predefined if not on step
+            if (step.duration_override == null && levainDefault.duration_override != null) {
+                step.duration_override = levainDefault.duration_override;
+            } else if (step.duration_override == null && predefined?.defaultDurationMinutes != null) {
+                 step.duration_override = predefined.defaultDurationMinutes;
+            }
         }
+        // Add similar default logic for bulk ferment S&F if needed from template
+        const bulkFermentStepIdDynamic = action.additionalData.bulkFermentStepIdDynamic;
+         if (Number(step.step_id) === bulkFermentStepIdDynamic && step.stretch_fold_interval_minutes == null) {
+            step.stretch_fold_interval_minutes = 30; // Default if not specified on template step
+        }
+
+        return step;
+    });
+
+    return {
+        ...state,
+        recipe_name: templateData.recipe_name ? `${templateData.recipe_name} (Copy)` : 'New Recipe from Template',
+        description: templateData.description || '',
+        targetDoughWeight: String(templateData.targetDoughWeight || INITIAL_RECIPE_FIELDS.targetDoughWeight),
+        hydrationPercentage: String(templateData.hydrationPercentage || INITIAL_RECIPE_FIELDS.hydrationPercentage),
+        saltPercentage: String(parseFloat(templateData.saltPercentage || INITIAL_RECIPE_FIELDS.saltPercentage).toFixed(1)),
+        steps: finalProcessedSteps,
+        currentRecipeId: null,
+        selectedRecipeToLoad: '',
+        isInTemplateMode: true,
+        activeTemplateId: templateData.recipe_id, // Use the template's original recipe_id for activeTemplateId
+        feedbackMessage: { type: '', text: `` },
+    };
+}
         case 'CLEAR_FORM': {
             const { predefinedSteps, levainStepIdDynamic } = action.payload;
             const initialSteps = [];
@@ -353,10 +385,14 @@ function RecipeCalculator() {
 
      const handleLoadTemplateData = useCallback((template) => {
         dispatch({
-            type: 'LOAD_TEMPLATE_DATA',
-            payload: { template: template },
-            additionalData: { predefinedSteps: predefinedSteps || [] }
-        });
+    type: 'LOAD_TEMPLATE_DATA',
+    payload: { template: template },
+    additionalData: { 
+        predefinedSteps: predefinedSteps || [],
+        levainStepIdDynamic,      // Pass this from useData()
+        bulkFermentStepIdDynamic  // Pass this from useData()
+    }
+});
     }, [predefinedSteps]);
 
     const handleSaveOrUpdateRecipe = async () => {

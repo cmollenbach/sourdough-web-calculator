@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Routes, Route, NavLink, Navigate } from 'react
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import RecipeCalculator from './RecipeCalculator';
+import PublicRecipeCalculatorView from './components/PublicRecipeCalculatorView'; // Import the new component
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import './App.css';
@@ -18,17 +19,17 @@ function AppContent() {
     return (
         <>
             <nav>
-                <ul className="main-nav-list"> {/* Added a class for more specific targeting */}
+                <ul className="main-nav-list">
                     <li className="nav-item-left">
                         <NavLink
-                            to="/"
+                            // If not logged in, main "Calculator" link could also go to public view or be hidden/changed
+                            to={token ? "/" : "/public-calculator"}
                             className={({ isActive }) => isActive ? "active" : ""}
                         >
                             Calculator
                         </NavLink>
                     </li>
 
-                    {/* Center item: Welcome message (only when logged in) */}
                     <li className="nav-item-center">
                         {token && currentUser && (
                             <span>Welcome, {currentUser.username || currentUser.email}!</span>
@@ -59,13 +60,28 @@ function AppContent() {
             </nav>
             <main>
                 <Routes>
-                    <Route path="/login" element={!token ? <LoginPage /> : <Navigate to="/" />} />
-                    <Route path="/register" element={!token ? <RegisterPage /> : <Navigate to="/" />} />
+                    {/* Public Routes */}
+                    <Route
+                        path="/public-calculator"
+                        element={!token ? <PublicRecipeCalculatorView /> : <Navigate to="/" replace />}
+                    />
+                    <Route
+                        path="/login"
+                        element={!token ? <LoginPage /> : <Navigate to="/" replace />}
+                    />
+                    <Route
+                        path="/register"
+                        element={!token ? <RegisterPage /> : <Navigate to="/" replace />}
+                    />
+
+                    {/* Authenticated Routes */}
                     <Route
                         path="/"
-                        element={token ? <RecipeCalculator /> : <Navigate to="/login" replace />}
+                        element={token ? <RecipeCalculator /> : <Navigate to="/public-calculator" replace />}
                     />
-                    <Route path="*" element={<Navigate to="/" />} />
+
+                    {/* Fallback for any other route */}
+                    <Route path="*" element={<Navigate to={token ? "/" : "/public-calculator"} replace />} />
                 </Routes>
             </main>
         </>

@@ -51,12 +51,12 @@ const getGenAiPrompt = (termKey, stepName = '') => {
 function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, isSaving, isInTemplateMode, bulkFermentStepId, levainStepId }) {
     const isBulkFermentSFStep = step.step_id === bulkFermentStepId;
     const isLevainStep = step.step_id === levainStepId;
-    const fieldsDisabled = isSaving || isInTemplateMode; 
+    const fieldsDisabled = isSaving || isInTemplateMode;
 
     const handleFieldChange = (field, value) => {
         onStepChange(index, field, value);
     };
-    
+
     const handleNumericFieldChange = (field, value) => {
         onStepChange(index, field, value === '' ? null : Number(value));
     };
@@ -70,7 +70,7 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
         console.log("GenAI Prompt for:", termKey, "-", prompt);
         // Future enhancement: Display this prompt in a modal with a "Copy" button.
         // For now, a simple alert can also work if you prefer immediate feedback:
-        // alert(`Suggested GenAI Prompt:\n\n${prompt}`); 
+        // alert(`Suggested GenAI Prompt:\n\n${prompt}`);
     };
 
     const renderInfoButton = (termKey, termDisplayName) => (
@@ -78,13 +78,13 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
             type="button"
             onClick={() => handleInfoClick(termKey, termDisplayName)}
             title={`Get AI explanation for ${termDisplayName || termKey.replace(/_/g, ' ')}`}
-            className={styles.infoButton} 
+            className={styles.infoButton}
             aria-label={`Get explanation for ${termDisplayName || termKey.replace(/_/g, ' ')}`}
         >
             ⓘ
         </button>
     );
-    
+
     // Helper to decide if a step name warrants an info button
     const shouldShowInfoForStepName = (name) => {
         const notableStepNames = ['Levain Build', 'Autolyse', 'Bulk Fermentation with Stretch and Fold', 'Proofing', 'Baking'];
@@ -105,19 +105,30 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
             <div className={styles.stepHeader}>
                 <h4>
                     Step {step.step_order || index + 1}:
-                    <select
-                        value={step.step_id || ''}
-                        onChange={(e) => handleNumericFieldChange('step_id', e.target.value)}
-                        disabled={fieldsDisabled || predefinedSteps.length === 0}
-                        className={styles.stepTypeSelect}
-                    >
-                        <option value="">-- Select Step Type --</option>
-                        {predefinedSteps.map(ps => (
-                            <option key={ps.step_id} value={ps.step_id}>{ps.step_name}</option>
-                        ))}
-                    </select>
+                    {/* MODIFIED: Conditional display for step name/type */}
+                    {predefinedSteps && predefinedSteps.length > 0 && !isInTemplateMode ? (
+                        // Fully interactive mode for logged-in users not in template mode
+                        <select
+                            value={step.step_id || ''}
+                            onChange={(e) => handleNumericFieldChange('step_id', e.target.value)}
+                            disabled={isSaving} // isInTemplateMode is false here, so only check isSaving
+                            className={styles.stepTypeSelect}
+                        >
+                            <option value="">-- Select Step Type --</option>
+                            {predefinedSteps.map(ps => (
+                                <option key={ps.step_id} value={ps.step_id}>{ps.step_name}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        // Read-only display for step name (for public view or when in template mode for logged-in user)
+                        <span style={{ marginLeft: '8px', fontWeight: 'normal', color: 'var(--color-text)' }} className={styles.stepNameTextDisplay}>
+                            {step.step_name || 'Unnamed Step'}
+                        </span>
+                    )}
+                    {/* Info button logic remains the same, relying on step.step_name */}
                     {shouldShowInfoForStepName(step.step_name) && renderInfoButton(getTermKeyForStepName(step.step_name), step.step_name)}
                 </h4>
+                {/* END OF MODIFIED PART */}
                 {!isInTemplateMode && (
                     <button
                         type="button"
@@ -165,7 +176,6 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                 <div className={`${styles.inputGroup} ${styles.twoColumn}`}>
                     <label htmlFor={`step-duration-${index}`}>
                         Duration (mins):
-                        {/* General duration info button, if step is not Bulk S&F or Levain (which might have specific duration contexts) */}
                         {!isLevainStep && renderInfoButton('step_duration', 'Step Duration')}
                     </label>
                     <input
