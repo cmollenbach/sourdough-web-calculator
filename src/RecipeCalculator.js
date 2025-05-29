@@ -1,7 +1,7 @@
 // src/RecipeCalculator.js
 import React, { useState, useEffect, useCallback, useReducer } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
-
+import { useNavigate } from 'react-router-dom';
 import RecipeService from './services/RecipeService';
 import RecipeFields from './components/RecipeFields';
 import RecipeManagementActions from './components/RecipeManagementActions';
@@ -245,6 +245,9 @@ function RecipeCalculator() {
         flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: 0
     });
 
+    const navigate = useNavigate();
+    const [isStartingBake, setIsStartingBake] = useState(false);
+    const [startBakeError, setStartBakeError] = useState('');
     const { isLoggedIn } = useAuth();
     const {
         predefinedSteps,
@@ -382,7 +385,42 @@ function RecipeCalculator() {
             dispatch({ type: 'SET_LOADING', field: 'isLoadingRecipes', payload: false });
         }
     };
+const handleStartGuidedBake = async () => {
+    if (!state.currentRecipeId) {
+        setStartBakeError('Please load or save a recipe to start a guided bake.');
+        setTimeout(() => setStartBakeError(''), 5000); // Clear error after 5s
+        return;
+    }
+    if (!isLoggedIn()) {
+        setStartBakeError('Please login to start a guided bake.');
+        setTimeout(() => setStartBakeError(''), 5000); // Clear error after 5s
+        return;
+    }
 
+    setIsStartingBake(true);
+    setStartBakeError('');
+    dispatch({ type: 'CLEAR_FEEDBACK' }); // Clear other general feedback
+
+    try {
+        // Assuming RecipeService.startBake is implemented as discussed
+        const bakeSessionData = await RecipeService.startBake(state.currentRecipeId); 
+        if (bakeSessionData && bakeSessionData.bakeLogId) {
+            // Pass initial data to GuidedBakePage to potentially avoid an immediate refetch
+            navigate(`/bake/${bakeSessionData.bakeLogId}`, { 
+                state: { initialBakeData: bakeSessionData } 
+            });
+        } else {
+            // This case might be covered if RecipeService.startBake throws an error for missing bakeLogId
+            setStartBakeError('Failed to initiate bake session. Missing session ID from server response.');
+            console.error("Start bake response missing bakeLogId:", bakeSessionData);
+        }
+    } catch (err) {
+        console.error("RecipeCalculator: Error starting guided bake:", err);
+        setStartBakeError(err.message || 'An unexpected error occurred while starting the bake.');
+    } finally {
+        setIsStartingBake(false);
+    }
+};
      const handleLoadTemplateData = useCallback((template) => {
         dispatch({
     type: 'LOAD_TEMPLATE_DATA',
@@ -561,6 +599,11 @@ function RecipeCalculator() {
                     {state.feedbackMessage.text}
                 </p>
             )}
+            {startBakeError && (
+     <p className={`${styles.feedbackMessage} ${styles.feedbackMessageError}`}>
+        {startBakeError}
+    </p>
+)}
 
             {isLoggedIn() && (predefinedSteps && predefinedSteps.length > 0) && (
                  <BaseTemplates
@@ -580,7 +623,10 @@ function RecipeCalculator() {
                             recipe={recipeInputFields}
                             onFieldChange={handleRecipeFieldChange}
                             isSaving={state.isSaving}
-                            clearFeedback={clearFeedback}
+                            clearFeedback={() => {
+    clearFeedback(); // Clears general feedback message from reducer
+    setStartBakeError(''); // Also clear bake-specific error
+}}
                             isInputsSection={true}
                             isInTemplateMode={state.isInTemplateMode}
                         />
@@ -601,9 +647,25 @@ function RecipeCalculator() {
                             isLoadingRecipes={state.isLoadingRecipes}
                             isSaving={state.isSaving}
                             currentRecipeId={state.currentRecipeId}
-                            clearFeedback={clearFeedback}
+                            clearFeedback={() => {
+    clearFeedback(); // Clears general feedback message from reducer
+    setStartBakeError(''); // Also clear bake-specific error
+}}
                             isInTemplateMode={state.isInTemplateMode}
                         />
+                        {isLoggedIn() && state.currentRecipeId && !state.isInTemplateMode && (
+    <div className={styles.actionsGroup} style={{ marginTop: 'var(--spacing-unit)' }}>
+        <button
+            onClick={handleStartGuidedBake}
+            disabled={isStartingBake || state.isSaving}
+            className={`${styles.buttonWithSpinner} ${styles.buttonPrimaryAccented}`} // Ensure .buttonPrimaryAccented is defined in your CSS
+            style={{ width: '100%', backgroundColor: 'var(--color-success)', color: 'white' }} // Example prominent styling
+        >
+            {isStartingBake ? 'Starting Bake...' : 'Start Guided Bake'}
+            {isStartingBake && <span className={styles.buttonSpinner}></span>}
+        </button>
+    </div>
+)}
                     </div>
                 </div>
                 <StepsColumn

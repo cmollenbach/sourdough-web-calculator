@@ -97,13 +97,13 @@ function RecipeFields({ recipe, onFieldChange, isSaving, clearFeedback, isInputs
                     </div>
                     <div className={styles.inputGroup}>
                         <label htmlFor="description">Description (Optional):</label>
-                        <textarea
-                            id="description"
-                            name="description"
-                            value={recipe.description}
-                            onChange={handleInputChange}
-                            disabled={isSaving}
-                        />
+<textarea
+    id="description"
+    name="description"
+    value={recipe.description || ''} // Ensure it's an empty string if null/undefined
+    onChange={handleInputChange}
+    disabled={isSaving}
+/>
                     </div>
                 </>
             )}

@@ -5,6 +5,7 @@ import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import RecipeCalculator from './RecipeCalculator';
 import PublicRecipeCalculatorView from './components/PublicRecipeCalculatorView'; // Import the new component
+import GuidedBakePage from './components/GuidedBakePage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import './App.css';
@@ -73,7 +74,11 @@ function AppContent() {
                         path="/register"
                         element={!token ? <RegisterPage /> : <Navigate to="/" replace />}
                     />
-
+                    <Route
+                        path="/bake/:bakeLogId"
+                        element={token ? <GuidedBakePage /> : <Navigate to="/login" replace />}
+                    />
+                      
                     {/* Authenticated Routes */}
                     <Route
                         path="/"
