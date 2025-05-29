@@ -555,6 +555,9 @@
         padding: calc(var(--spacing-unit) * 1.5);
     }
 
+    .mainTitle { /* This class is no longer in RecipeCalculator.module.css if moved to App.css */
+        /* font-size: 1.7rem; */ 
+    }
 
     .templateCardsContainer { /* For 1 column on small screens */
         grid-template-columns: 1fr;
