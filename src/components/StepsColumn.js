@@ -73,20 +73,24 @@ function StepsColumn({
                                     onStepChange={onStepChange}
                                     onDeleteStep={onDeleteStep}
                                     isSaving={isSaving}
-                                    isInTemplateMode={isInTemplateMode}
+                                    isInTemplateMode={isInTemplateMode} // Propagated
                                     bulkFermentStepId={bulkFermentStepId}
                                     levainStepId={levainStepId}
                                 />
                             </SortableStepItem>
                         ))}
-                        <button
-                            type="button"
-                            onClick={onAddStep}
-                             disabled={isLoadingPredefinedSteps || predefinedSteps.length === 0 || isSaving || isInTemplateMode}                            className={`${styles.addStepButton} ${styles.buttonWithSpinner}`}
-                        >
-                            {addStepButtonText()}
-                            {isSaving && <span className={styles.buttonSpinner}></span>}
-                        </button>
+                        {/* Updated: Conditionally render the "Add Step" button; hide in template mode */}
+                        {!isInTemplateMode && (
+                            <button
+                                type="button"
+                                onClick={onAddStep}
+                                disabled={isLoadingPredefinedSteps || predefinedSteps.length === 0 || isSaving} // Disabled only by other conditions
+                                className={`${styles.addStepButton} ${styles.buttonWithSpinner}`}
+                            >
+                                {addStepButtonText()}
+                                {isSaving && <span className={styles.buttonSpinner}></span>}
+                            </button>
+                        )}
                     </div>
                 </SortableContext>
             </DndContext>

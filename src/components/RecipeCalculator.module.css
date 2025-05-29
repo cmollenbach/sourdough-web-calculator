@@ -1,43 +1,70 @@
 /* src/components/RecipeCalculator.module.css */
 
-/* Overall Layout */
+/* Define custom properties scoped to the calculator layout */
 .recipeCalculatorLayout {
+    --main-section-padding: calc(var(--spacing-unit) * 1.5); /* Reduced padding for main sections */
+    --step-item-padding: var(--spacing-unit); /* Padding inside each step item */
+    --step-item-margin-bottom: var(--spacing-unit); /* Margin below each step item */
+    --step-item-header-margin-bottom: var(--spacing-unit); /* Margin below step header */
+    --step-item-input-group-margin-bottom: calc(var(--spacing-unit) * 0.75); /* Margin between input rows in a step */
+    --step-item-input-gap: calc(var(--spacing-unit) * 0.75); /* Gap in two-column input groups in a step */
+    --step-item-numeric-input-max-width: 90px; /* Max-width for number inputs in steps */
+    --step-item-label-padding-right: calc(var(--spacing-unit) * 0.5);
+
+    /* Existing layout styles */
     display: flex;
-    flex-wrap: nowrap; 
-    gap: calc(var(--spacing-unit) * 2); 
+    flex-wrap: nowrap;
+    gap: calc(var(--spacing-unit) * 2);
     background-color: var(--color-surface);
-    padding: calc(var(--spacing-unit) * 2.5); 
+    padding: calc(var(--spacing-unit) * 2.5);
     border-radius: var(--border-radius-medium);
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
     border: 1px solid var(--color-border);
     margin: calc(var(--spacing-unit) * 2) auto;
-    max-width: 1200px; 
+    max-width: 1200px;
 }
 
 .recipeDetailsColumn {
-    flex: 2 1 60%; 
-    min-width: 400px; 
+    flex: 2 1 60%;
+    min-width: 400px;
     padding: var(--spacing-unit);
     display: flex;
-    flex-direction: column; 
-    gap: calc(var(--spacing-unit) * 2.5); 
+    flex-direction: column;
+    gap: calc(var(--spacing-unit) * 2.5);
 }
 
 .stepsColumn {
-    flex: 1 1 40%; 
-    min-width: 320px; 
+    flex: 1 1 40%;
+    min-width: 320px;
     padding: var(--spacing-unit);
     display: flex;
     flex-direction: column;
 }
 
 /* Headings and Messages */
-.mainTitle { 
+.mainTitle {
     text-align: center;
-    margin-bottom: calc(var(--spacing-unit) * 2.5); 
+    margin-bottom: calc(var(--spacing-unit) * 2.5);
     font-family: var(--font-family-headings);
     color: var(--color-text);
-    font-size: 2rem; 
+    font-size: 2rem;
+}
+
+.templateModeBanner {
+  background-color: #fff9c4; /* Light yellow, distinct but not too jarring */
+  color: #795548; /* Brown text for contrast */
+  padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+  border-radius: var(--border-radius-small);
+  text-align: center;
+  border: 1px solid #ffecb3; /* Slightly darker yellow border */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    margin-top: calc(var(--spacing-unit) * 2); 
+}
+
+.templateModeBanner p {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .feedbackMessage {
@@ -45,7 +72,7 @@
     margin-bottom: calc(var(--spacing-unit) * 1.5);
     padding: calc(var(--spacing-unit) * 0.75) var(--spacing-unit);
     border-radius: var(--border-radius-small);
-    font-size: 0.9rem; 
+    font-size: 0.9rem;
 }
 
 .feedbackMessageError {
@@ -59,6 +86,7 @@
     background-color: rgba(46, 125, 50, 0.1);
     border: 1px solid var(--color-success);
 }
+
 .feedbackMessageInfo {
     color: var(--color-text-muted);
     background-color: var(--color-secondary);
@@ -77,40 +105,39 @@
 
 /* Section Styling */
 .inputsSection,
-.resultsGroup, 
+.resultsGroup,
 .manageRecipesSection {
     border: 1px solid var(--color-border);
-    padding: calc(var(--spacing-unit) * 2);
+    padding: var(--main-section-padding); /* Using variable */
     border-radius: var(--border-radius-medium);
-    background-color: #fff; 
+    background-color: #fff;
 }
 
 /* COMMON SECTION HEADING STYLE */
 .inputsSection h3,
 .resultsGroup h3,
 .manageRecipesSection h3,
-.stepsColumn h3 { 
+.stepsColumn h3 {
     margin-top: 0;
-    margin-bottom: calc(var(--spacing-unit) * 2); 
-    font-size: 1.3rem; 
+    margin-bottom: calc(var(--spacing-unit) * 2);
+    font-size: 1.3rem;
     color: var(--color-primary-darker);
-    text-align: left; /* All section titles left-aligned */
+    text-align: left;
     border-bottom: 1px solid var(--color-border);
     padding-bottom: var(--spacing-unit);
 }
 
-
 /* Input Groups and Form Elements */
 .inputGroup {
-    margin-bottom: calc(var(--spacing-unit) * 0.1); 
+    margin-bottom: calc(var(--spacing-unit) * 1); /* Default tighter margin */
 }
 
 .inputGroup label {
     display: block;
-    margin-bottom: calc(var(--spacing-unit) * 0.5); 
+    margin-bottom: calc(var(--spacing-unit) * 0.5);
     color: var(--color-text-muted);
     font-weight: bold;
-    font-size: 0.9rem; 
+    font-size: 0.9rem;
 }
 
 .inputGroup input[type="text"],
@@ -118,21 +145,20 @@
 .inputGroup textarea,
 .inputGroup select {
     width: 100%;
-    padding: calc(var(--spacing-unit) * 1); 
+    padding: calc(var(--spacing-unit) * 0.75); /* Reduced padding for inputs */
     border: 1px solid var(--color-border);
     border-radius: var(--border-radius-small);
     font-family: var(--font-family-body);
-    font-size: 1rem; 
+    font-size: 0.95rem; /* Slightly smaller font in inputs */
     color: var(--color-text);
     background-color: var(--color-surface);
     box-sizing: border-box;
     transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
-.inputGroup input[type="number"] { /* General style for number inputs */
-    text-align: right; 
+.inputGroup input[type="number"] {
+    text-align: right;
 }
-
 
 .inputGroup input:focus,
 .inputGroup textarea:focus,
@@ -142,58 +168,89 @@
     box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 141, 110, 99), 0.25);
 }
 
-/* Two-column layout specifically for the "Inputs" section */
+/* Two-column layout for the main "Inputs" section */
 .inputsSection .inputGroup.twoColumn {
     display: grid;
-    grid-template-columns: auto 1fr; /* Label takes auto width, input area takes the rest */
-    align-items: center; 
-    gap: calc(var(--spacing-unit) * 2); /* Increased gap for more space */
-}
-.inputsSection .inputGroup.twoColumn label {
-    margin-bottom: 0; 
-    text-align: left; /* Align label text to the left */
-    padding-right: 0; 
-    /* font-weight: normal; /* Optional: if you want labels less bold */
-}
-.inputsSection .inputGroup.twoColumn input[type="number"] {
-    max-width: 100px; /* Keep input fields relatively small */
-    text-align: right; /* Text inside the input box (numbers) aligns to the right */
-    margin-left: auto; /* This pushes the input field itself to the far right of its grid cell */
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: calc(var(--spacing-unit) * 1.5); /* Slightly reduced gap */
 }
 
+.inputsSection .inputGroup.twoColumn label {
+    margin-bottom: 0;
+    text-align: left;
+    padding-right: 0;
+}
+
+.inputsSection .inputGroup.twoColumn input[type="number"] {
+    max-width: 100px;
+    text-align: right;
+    margin-left: auto;
+}
 
 /* Two-column layout for manageRecipesSection */
-.manageRecipesSection .inputGroup.twoColumn { 
+.manageRecipesSection .inputGroup.twoColumn {
     display: grid;
-    grid-template-columns: minmax(160px, auto) 1fr; 
-    align-items: center; 
+    grid-template-columns: minmax(140px, auto) 1fr; /* Slightly adjusted label column */
+    align-items: center;
     gap: var(--spacing-unit);
 }
+
 .manageRecipesSection .inputGroup.twoColumn label {
     margin-bottom: 0;
     padding-right: var(--spacing-unit);
+    text-align: right;
+}
+
+.manageRecipesSection .inputGroup.twoColumn input,
+.manageRecipesSection .inputGroup.twoColumn textarea,
+.manageRecipesSection .inputGroup.twoColumn select {
+    max-width: none;
+}
+
+/* StepEditor specific input group styling for compactness and alignment */
+.stepItemEditor .inputGroup {
+    margin-bottom: var(--step-item-input-group-margin-bottom);
+}
+
+.stepItemEditor .inputGroup.twoColumn {
+    display: grid;
+    grid-template-columns: auto 1fr; /* Label auto, input's column takes rest */
+    align-items: center;
+    gap: var(--step-item-input-gap);
+}
+
+.stepItemEditor .inputGroup.twoColumn label {
+    margin-bottom: 0;
+    padding-right: var(--step-item-label-padding-right);
+    text-align: left;
+    font-weight: normal;
+    white-space: nowrap;
+}
+
+.stepItemEditor .inputGroup.twoColumn input[type="number"] {
+    max-width: var(--step-item-numeric-input-max-width); /* Use variable */
+    width: 100%; /* Fill its column in the grid, constrained by max-width */
+    margin-left: auto; /* Pushes the input field to the right of its column */
     text-align: right; 
 }
-.manageRecipesSection .inputGroup.twoColumn input, 
-.manageRecipesSection .inputGroup.twoColumn textarea,
-.manageRecipesSection .inputGroup.twoColumn select { 
-    max-width: none; 
+/* Notes field in StepEditor - ensure it has enough space */
+.stepItemEditor .inputGroup textarea {
+    min-height: 50px; /* Example height */
 }
 
 
 /* Recipe Management Specific Styling */
-.recipeManagementGroup { 
-    margin-bottom: 0; 
-    margin-top: 0; 
-    padding-top: 0; 
-    border-top: none; 
+.recipeManagementGroup {
+    margin-bottom: 0;
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
 }
-/* H3 inside RecipeManagementActions is styled by common section h3 or can be specific if needed */
-/* .recipeManagementGroup h3 { } */
 
 .actionsGroup {
     display: flex;
-    gap: calc(var(--spacing-unit)); 
+    gap: calc(var(--spacing-unit));
     margin-top: calc(var(--spacing-unit) * 1.5);
     flex-wrap: wrap;
 }
@@ -204,31 +261,32 @@
 
 .buttonSpinner {
     display: inline-block;
-    width: var(--spinner-size, 1em); 
+    width: var(--spinner-size, 1em);
     height: var(--spinner-size, 1em);
     border: var(--spinner-border-size, 0.15em) solid var(--spinner-color-light, white);
-    border-top-color: var(--spinner-color, #8D6E63); 
+    border-top-color: var(--spinner-color, #8D6E63);
     border-radius: 50%;
     animation: spin 1s linear infinite;
     margin-left: calc(var(--spacing-unit) * 1);
 }
 
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .mainActions button {
     flex-grow: 1;
-    min-width: 130px; 
+    min-width: 130px;
     padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 2);
-    font-size: 0.9rem; 
+    font-size: 0.9rem;
 }
 
 .buttonDanger {
     background-color: var(--color-error) !important;
 }
+
 .buttonDanger:hover {
     background-color: darkred !important;
 }
@@ -237,43 +295,43 @@
     background-color: #6c757d !important;
     color: white !important;
 }
+
 .buttonSecondary:hover {
     background-color: #5a6268 !important;
 }
 
 /* Results Group Styling */
 .resultsGroup {
-    padding: calc(var(--spacing-unit) * 2); 
-    border: 1px solid var(--color-border); 
+    padding: var(--main-section-padding); /* Using variable */
+    border: 1px solid var(--color-border);
 }
-/* .resultsGroup h3 styling is now handled by the common section h3 style */
 
 .resultItem {
     display: flex;
     justify-content: space-between;
-    padding: calc(var(--spacing-unit) * 0.75) 0; 
-    font-size: 1rem; 
+    padding: calc(var(--spacing-unit) * 0.75) 0;
+    font-size: 1rem;
 }
+
 .resultItem.total {
     font-weight: bold;
-    font-size: 1.1rem; 
+    font-size: 1.1rem;
     color: var(--color-primary-darker);
     border-top: 1px solid var(--color-border);
-    margin-top: var(--spacing-unit); 
-    padding-top: var(--spacing-unit); 
+    margin-top: var(--spacing-unit);
+    padding-top: var(--spacing-unit);
 }
+
 .resultItem span:first-child {
-    color: var(--color-text); 
+    color: var(--color-text);
     font-weight: 500;
 }
+
 .resultItem span:last-child {
     font-weight: bold;
 }
 
-
 /* Steps Column (Right Column) */
-/* .stepsColumn h3 styling is now handled by the common section h3 style */
-
 .stepsManagementSection {
     margin-top: 0;
     width: 100%;
@@ -283,46 +341,50 @@
 .stepItemEditor {
     background-color: var(--color-surface-alt, #fdfdfd);
     border: 1px solid var(--color-border);
-    padding: calc(var(--spacing-unit) * 1.5); 
-    border-radius: var(--border-radius-small); 
-    box-shadow: 0 2px 6px rgba(0,0,0,0.06);  
-    margin-bottom: calc(var(--spacing-unit) * 1.5); 
+    padding: var(--step-item-padding); /* Using variable */
+    border-radius: var(--border-radius-small);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+    margin-bottom: var(--step-item-margin-bottom); /* Using variable */
 }
 
 .stepHeader {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: calc(var(--spacing-unit) * 1.5); 
+    margin-bottom: var(--step-item-header-margin-bottom); /* Using variable */
 }
+
 .stepHeader h4 {
     margin: 0;
     display: flex;
     align-items: center;
-    gap: calc(var(--spacing-unit) * 0.75); 
-    font-size: 1.05rem; 
+    gap: calc(var(--spacing-unit) * 0.75);
+    font-size: 1.05rem;
     flex-grow: 1;
 }
+
 .stepTypeSelect {
-   flex-grow: 1;
-   max-width: 220px; 
-   font-size: 0.9rem; 
-   padding: calc(var(--spacing-unit) * 0.85); 
+    flex-grow: 1;
+    max-width: 200px; /* Slightly reduced max-width */
+    font-size: 0.85rem; /* Slightly smaller font */
+    padding: calc(var(--spacing-unit) * 0.75); /* Reduced padding */
 }
 
 .removeStepBtn {
     background-color: transparent;
     color: var(--color-error);
     border: 1px solid var(--color-error);
-    padding: calc(var(--spacing-unit) * 0.5) calc(var(--spacing-unit) * 1); 
-    font-size: 0.8rem; 
+    padding: calc(var(--spacing-unit) * 0.5) calc(var(--spacing-unit) * 0.75); /* Reduced padding */
+    font-size: 0.75rem; /* Smaller font */
     border-radius: var(--border-radius-small);
     cursor: pointer;
     transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
 }
+
 .removeStepBtn:hover {
     background-color: rgba(var(--color-error-rgb, 176, 0, 32), 0.1);
 }
+
 .removeStepBtn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -332,81 +394,21 @@
     display: block;
     width: 100%;
     margin-top: var(--spacing-unit);
-    padding: calc(var(--spacing-unit) * 1.1) calc(var(--spacing-unit) * 1.5); 
-    font-size: 0.95rem; 
+    padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 1.5); /* Slightly reduced padding */
+    font-size: 0.9rem; /* Slightly smaller font */
 }
 
 .sortableStepDragActive {
     background-color: rgba(var(--color-primary-rgb, 141, 110, 99), 0.1);
     border: 1px dashed var(--color-primary-darker);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
-
-/* Responsive adjustments */
-@media (max-width: 1000px) { 
-    .recipeCalculatorLayout {
-        flex-direction: column;
-        gap: calc(var(--spacing-unit) * 2); 
-    }
-    .recipeDetailsColumn,
-    .stepsColumn {
-        min-width: 100%; 
-        flex-basis: auto; 
-    }
-    .resultsGroup {
-        order: initial; 
-    }
-     .inputsSection .inputGroup.twoColumn label,
-    .manageRecipesSection .inputGroup.twoColumn label { 
-        text-align: left; 
-    }
-}
-
-@media (max-width: 600px) {
-    .recipeCalculatorLayout {
-        padding: calc(var(--spacing-unit) * 1.5); 
-    }
-    .mainTitle {
-        font-size: 1.7rem; 
-    }
-    .inputsSection .inputGroup.twoColumn,
-    .manageRecipesSection .inputGroup.twoColumn, 
-    .stepItemEditor .inputGroup.twoColumn {
-        grid-template-columns: 1fr; 
-    }
-    .inputsSection .inputGroup.twoColumn label,
-    .manageRecipesSection .inputGroup.twoColumn label, 
-    .stepItemEditor .inputGroup.twoColumn label {
-        text-align: left;
-        margin-bottom: calc(var(--spacing-unit) * 0.25);
-        padding-right: 0;
-    }
-    .inputGroup input[type="number"] { 
-        max-width: none;
-        margin-left: 0; /* Reset margin for stacked layout */
-    }
-
-    .stepHeader h4 {
-        flex-direction: column;
-        align-items: flex-start;
-        font-size: 1rem; 
-    }
-    .stepTypeSelect {
-        width: 100%;
-        max-width: none;
-        margin-top: calc(var(--spacing-unit) * 0.75);
-    }
-    .mainActions button { 
-        flex-basis: 100%;
-    }
-    /* src/components/RecipeCalculator.module.css */
-/* ... other styles ... */
-
+/* Base Templates Section */
 .baseTemplatesSection {
-    background-color: var(--color-surface-alt, #fdfdfd); /* Or var(--color-surface) */
+    background-color: var(--color-surface-alt, #fdfdfd);
     border: 1px solid var(--color-border);
-    padding: calc(var(--spacing-unit) * 2);
+    padding: calc(var(--spacing-unit) * 2); /* Kept original padding for this section, can be changed to --main-section-padding if desired */
     border-radius: var(--border-radius-medium);
     margin-bottom: calc(var(--spacing-unit) * 2.5);
     box-shadow: 0 2px 6px rgba(0,0,0,0.06);
@@ -421,32 +423,170 @@
     padding-bottom: var(--spacing-unit);
 }
 
-.baseTemplatesSection ul {
-    list-style: none;
-    padding: 0;
-}
-
-.baseTemplatesSection li {
+/* New style for the introductory text in template section */
+.templateIntroText {
+    font-size: 0.95rem;
+    color: var(--color-text-muted);
     margin-bottom: calc(var(--spacing-unit) * 2);
-    padding-bottom: calc(var(--spacing-unit) * 1.5);
-    border-bottom: 1px solid var(--color-secondary);
+    line-height: 1.6;
 }
 
-.baseTemplatesSection li:last-child {
-    margin-bottom: 0;
-    padding-bottom: 0;
-    border-bottom: none;
+/* New container for the 3-column card layout */
+.templateCardsContainer {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Responsive card layout */
+    gap: calc(var(--spacing-unit) * 2);
+    padding: 0; 
+    list-style: none; 
 }
 
-.baseTemplatesSection h4 {
+/* New style for individual template cards */
+.templateCard {
+    background-color: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--border-radius-small);
+    padding: calc(var(--spacing-unit) * 1.5);
+    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; 
+    transition: box-shadow 0.2s ease-in-out;
+}
+
+.templateCardActive {
+    border-color: var(--color-primary-darker);
+    box-shadow: 0 3px 10px rgba(var(--color-primary-rgb, 141, 110, 99), 0.4);
+    /* Make background more distinct, e.g., a light primary color */
+    background-color: rgba(var(--color-primary-rgb, 141, 110, 99), 0.1); /* Light brownish tint */
+    /* Or a more saturated version of secondary if you define one */
+    /* background-color: #e0e0e0; /* Example: a slightly darker grey */
+}
+
+
+
+.templateCard:hover {
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+}
+
+.templateCardContent {
+    margin-bottom: var(--spacing-unit); 
+}
+
+.templateCard h4 { 
     margin-top: 0;
-    margin-bottom: calc(var(--spacing-unit) * 0.5);
-    font-size: 1.1rem;
+    margin-bottom: calc(var(--spacing-unit) * 0.75);
+    font-size: 1.1rem; 
+    color: var(--color-primary);
 }
 
-.baseTemplatesSection p {
-    font-size: 0.9rem;
+.templateCard p { 
+    font-size: 0.85rem; 
     color: var(--color-text-muted);
     margin-bottom: var(--spacing-unit);
+    line-height: 1.5;
+    flex-grow: 1; 
 }
+
+.templateCardButton {
+    width: 100%;
+    padding: calc(var(--spacing-unit) * 0.75) var(--spacing-unit); 
+    font-size: 0.9rem;
+    margin-top: auto; 
+}
+
+/* Remove old ul/li specific styles for .baseTemplatesSection if they were targeting list items directly */
+.baseTemplatesSection ul,
+.baseTemplatesSection li {
+    /* Commented out as card layout replaces list structure for templates */
+    /* list-style: none; */
+    /* padding: 0; */
+    /* margin-bottom: 0; */
+    /* border-bottom: none; */
+}
+
+
+/* Responsive adjustments */
+@media (max-width: 1000px) {
+    .recipeCalculatorLayout {
+        flex-direction: column;
+        gap: calc(var(--spacing-unit) * 2);
+    }
+
+    .recipeDetailsColumn,
+    .stepsColumn {
+        min-width: 100%;
+        flex-basis: auto;
+    }
+
+    .resultsGroup {
+        order: initial;
+    }
+
+    .inputsSection .inputGroup.twoColumn label,
+    .manageRecipesSection .inputGroup.twoColumn label {
+        text-align: left;
+    }
+}
+
+@media (max-width: 900px) { 
+    .templateCardsContainer { /* For 2 columns on medium screens */
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    }
+}
+
+
+@media (max-width: 600px) {
+    .recipeCalculatorLayout {
+        padding: calc(var(--spacing-unit) * 1.5);
+    }
+
+    .mainTitle { /* This class is no longer in RecipeCalculator.module.css if moved to App.css */
+        /* font-size: 1.7rem; */ 
+    }
+
+    .templateCardsContainer { /* For 1 column on small screens */
+        grid-template-columns: 1fr;
+    }
+
+    .inputsSection .inputGroup.twoColumn,
+    .manageRecipesSection .inputGroup.twoColumn,
+    .stepItemEditor .inputGroup.twoColumn {
+        grid-template-columns: 1fr; /* Stack label and input */
+    }
+
+    .inputsSection .inputGroup.twoColumn label,
+    .manageRecipesSection .inputGroup.twoColumn label,
+    .stepItemEditor .inputGroup.twoColumn label {
+        text-align: left;
+        margin-bottom: calc(var(--spacing-unit) * 0.25); /* Add margin back for stacked layout */
+        padding-right: 0;
+        white-space: normal; /* Allow label to wrap if needed */
+    }
+    
+    .stepItemEditor .inputGroup.twoColumn input[type="number"] {
+        max-width: none; /* Allow full width when stacked */
+        width: 100%;
+        margin-left: 0; /* Reset margin for stacked layout */
+    }
+
+    .inputGroup input[type="number"] { /* General numeric inputs in other sections */
+        max-width: none;
+        margin-left: 0;
+    }
+
+    .stepHeader h4 {
+        flex-direction: column;
+        align-items: flex-start;
+        font-size: 1rem;
+    }
+
+    .stepTypeSelect {
+        width: 100%;
+        max-width: none;
+        margin-top: calc(var(--spacing-unit) * 0.75);
+    }
+
+    .mainActions button {
+        flex-basis: 100%;
+    }
 }

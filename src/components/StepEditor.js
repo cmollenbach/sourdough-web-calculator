@@ -17,7 +17,8 @@ import styles from './RecipeCalculator.module.css';
 function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, isSaving, isInTemplateMode, bulkFermentStepId, levainStepId }) {
     const isBulkFermentSFStep = step.step_id === bulkFermentStepId;
     const isLevainStep = step.step_id === levainStepId;
- const fieldsDisabled = isSaving || isInTemplateMode; 
+    const fieldsDisabled = isSaving || isInTemplateMode; 
+
     const handleFieldChange = (field, value) => {
         onStepChange(index, field, value);
     };
@@ -30,7 +31,6 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
         onStepChange(index, field, value === '' ? null : parseFloat(value));
     };
 
-
     return (
         <div className={styles.stepItemEditor}>
             <div className={styles.stepHeader}>
@@ -39,7 +39,7 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                     <select
                         value={step.step_id || ''}
                         onChange={(e) => handleNumericFieldChange('step_id', e.target.value)}
-                        disabled={isSaving || predefinedSteps.length === 0}
+                        disabled={isSaving || predefinedSteps.length === 0 || isInTemplateMode} // Updated: also disabled in template mode
                         className={styles.stepTypeSelect}
                     >
                         <option value="">-- Select Step Type --</option>
@@ -48,14 +48,17 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                         ))}
                     </select>
                 </h4>
-                <button
-                    type="button"
-                    className={styles.removeStepBtn}
-                    onClick={() => onDeleteStep(index)}
-                    disabled={fieldsDisabled}
-                >
-                    Remove
-                </button>
+                {/* Updated: Conditionally render the Remove button; hide in template mode */}
+                {!isInTemplateMode && (
+                    <button
+                        type="button"
+                        className={styles.removeStepBtn}
+                        onClick={() => onDeleteStep(index)}
+                        disabled={isSaving} // Only disabled by isSaving now, as it's hidden in template mode
+                    >
+                        Remove
+                    </button>
+                )}
             </div>
 
             {isBulkFermentSFStep ? (

@@ -1,57 +1,60 @@
 // src/App.js
-import React from 'react'; // Removed useState, useEffect
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, Navigate } from 'react-router-dom';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import RecipeCalculator from './RecipeCalculator';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { DataProvider } from './contexts/DataContext'; // Added DataProvider
+import { DataProvider } from './contexts/DataContext';
 import './App.css';
 
 function AppContent() {
-    const { token, currentUser, isLoading, logout } = useAuth(); // Removed isLoggedIn as token check is sufficient
+    const { token, currentUser, isLoading, logout } = useAuth();
 
     if (isLoading) {
-        return <div>Loading...</div>; // Or a spinner
+        return <div className="loading-app">Loading Application...</div>;
     }
 
     return (
         <>
             <nav>
-                <ul>
-                    <li>
+                <ul className="main-nav-list"> {/* Added a class for more specific targeting */}
+                    <li className="nav-item-left">
                         <NavLink
                             to="/"
                             className={({ isActive }) => isActive ? "active" : ""}
                         >
-                            Home (Calculator)
+                            Calculator
                         </NavLink>
                     </li>
-                    {!token ? (
-                        <>
-                            <li>
+
+                    {/* Center item: Welcome message (only when logged in) */}
+                    <li className="nav-item-center">
+                        {token && currentUser && (
+                            <span>Welcome, {currentUser.username || currentUser.email}!</span>
+                        )}
+                    </li>
+
+                    <li className="nav-item-right">
+                        {!token ? (
+                            <>
                                 <NavLink
                                     to="/login"
                                     className={({ isActive }) => isActive ? "active" : ""}
                                 >
                                     Login
                                 </NavLink>
-                            </li>
-                            <li>
                                 <NavLink
                                     to="/register"
                                     className={({ isActive }) => isActive ? "active" : ""}
                                 >
                                     Register
                                 </NavLink>
-                            </li>
-                        </>
-                    ) : (
-                        <>
-                            {currentUser && <li><span>Welcome, {currentUser.username || currentUser.email}!</span></li>}
-                            <li><button onClick={logout}>Logout</button></li>
-                        </>
-                    )}
+                            </>
+                        ) : (
+                            <button onClick={logout}>Logout</button>
+                        )}
+                    </li>
                 </ul>
             </nav>
             <main>
@@ -73,8 +76,9 @@ function App() {
     return (
         <Router>
             <AuthProvider>
-                <DataProvider> {/* Wrap AppContent (or relevant part) with DataProvider */}
+                <DataProvider>
                     <div className="App">
+                        <h1 className="app-title">Sourdough Recipe Calculator</h1>
                         <AppContent />
                     </div>
                 </DataProvider>
