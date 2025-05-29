@@ -61,6 +61,30 @@
     margin-top: calc(var(--spacing-unit) * 2); 
 }
 
+/* Add to src/components/RecipeCalculator.module.css */
+.infoButton {
+    margin-left: 5px;
+    background: none;
+    border: none;
+    color: var(--color-primary); /* Or any color you prefer */
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.9em; /* Adjust as needed */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5em; /* Make it a bit square */
+    height: 1.5em;
+    border-radius: 50%; /* Make it round */
+    /* Optional: add a light border or background on hover/focus */
+}
+
+.infoButton:hover,
+.infoButton:focus {
+    background-color: rgba(var(--color-primary-rgb, 141, 110, 99), 0.1);
+    outline: none;
+}
+
 .templateModeBanner p {
   margin: 0;
   font-size: 0.9rem;

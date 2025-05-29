@@ -2,7 +2,7 @@
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import styles from './RecipeCalculator.module.css';
-import RecipeFields from './RecipeFields'; // Import RecipeFields
+import RecipeFields from './RecipeFields'; 
 
 /**
  * @param {object} props
@@ -20,6 +20,7 @@ import RecipeFields from './RecipeFields'; // Import RecipeFields
  * @param {boolean} props.isSaving
  * @param {string|null} props.currentRecipeId
  * @param {function} props.clearFeedback
+ * @param {boolean} props.isInTemplateMode // Added prop
  */
 function RecipeManagementActions({
     recipeName,
@@ -35,7 +36,8 @@ function RecipeManagementActions({
     isLoadingRecipes,
     isSaving,
     currentRecipeId,
-    clearFeedback
+    clearFeedback,
+    isInTemplateMode // Destructure new prop
 }) {
     const { isLoggedIn } = useAuth(); 
     if (!isLoggedIn()) {
@@ -55,6 +57,13 @@ function RecipeManagementActions({
         }
     };
 
+    const getSaveButtonText = () => {
+        if (isSaving) {
+            return isInTemplateMode || !currentRecipeId ? 'Saving...' : 'Updating...';
+        }
+        return isInTemplateMode || !currentRecipeId ? 'Save as New Recipe' : 'Update Loaded Recipe';
+    };
+
     return (
         <div className={styles.recipeManagementGroup}>
             <h3>Manage Recipe Details & Actions</h3>
@@ -64,7 +73,7 @@ function RecipeManagementActions({
                 onFieldChange={handleFieldChange}
                 isSaving={isSaving}
                 clearFeedback={clearFeedback}
-                isManageSection={true} // Flag to render only these fields
+                isManageSection={true} 
             />
 
             <div className={styles.inputGroup}>
@@ -73,7 +82,7 @@ function RecipeManagementActions({
                     id="loadRecipeSelect"
                     value={selectedRecipeToLoad}
                     onChange={onLoadRecipeChange}
-                    disabled={isLoadingRecipes || isSaving}
+                    disabled={isLoadingRecipes || isSaving || isInTemplateMode} // Disable load when in template mode
                 >
                     <option value="">Select a recipe...</option>
                     {savedRecipes.map(recipe => (
@@ -88,14 +97,12 @@ function RecipeManagementActions({
                 )}
             </div>
 
-            {/* <hr />  Removed hr as sections will provide separation */}
-
             <div className={`${styles.actionsGroup} ${styles.mainActions}`}>
                 <button onClick={onSaveOrUpdate} disabled={isSaving} className={styles.buttonWithSpinner}>
-                    {isSaving ? (currentRecipeId ? 'Updating...' : 'Saving...') : (currentRecipeId ? 'Update Loaded Recipe' : 'Save as New Recipe')}
+                    {getSaveButtonText()}
                     {isSaving && <span className={styles.buttonSpinner}></span>}
                 </button>
-                {currentRecipeId && (
+                {currentRecipeId && !isInTemplateMode && ( // Only show delete if it's a saved user recipe and not in template mode
                     <button onClick={onDelete} disabled={isSaving} className={`${styles.buttonDanger} ${styles.buttonWithSpinner}`}>
                         {isSaving ? 'Deleting...' : 'Delete Loaded Recipe'}
                         {isSaving && <span className={styles.buttonSpinner}></span>}
