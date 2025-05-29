@@ -1,6 +1,6 @@
 // src/components/RecipeManagementActions.js
 import React from 'react';
-import AuthService from '../services/AuthService';
+import { useAuth } from '../contexts/AuthContext';
 import styles from './RecipeCalculator.module.css';
 import RecipeFields from './RecipeFields'; // Import RecipeFields
 
@@ -37,7 +37,8 @@ function RecipeManagementActions({
     currentRecipeId,
     clearFeedback
 }) {
-    if (!AuthService.isLoggedIn()) {
+    const { isLoggedIn } = useAuth(); 
+    if (!isLoggedIn()) {
         return <p className={styles.authMessage}>Please login to save and load your recipes.</p>;
     }
 

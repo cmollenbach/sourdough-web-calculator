@@ -10,13 +10,14 @@ import styles from './RecipeCalculator.module.css';
  * @param {function(number, string, any): void} props.onStepChange
  * @param {function(number): void} props.onDeleteStep
  * @param {boolean} props.isSaving
+ * @param {boolean} props.isInTemplateMode
  * @param {string | null} props.bulkFermentStepId
  * @param {string | null} props.levainStepId
  */
-function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, isSaving, bulkFermentStepId, levainStepId }) {
+function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, isSaving, isInTemplateMode, bulkFermentStepId, levainStepId }) {
     const isBulkFermentSFStep = step.step_id === bulkFermentStepId;
     const isLevainStep = step.step_id === levainStepId;
-
+ const fieldsDisabled = isSaving || isInTemplateMode; 
     const handleFieldChange = (field, value) => {
         onStepChange(index, field, value);
     };
@@ -51,7 +52,7 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                     type="button"
                     className={styles.removeStepBtn}
                     onClick={() => onDeleteStep(index)}
-                    disabled={isSaving}
+                    disabled={fieldsDisabled}
                 >
                     Remove
                 </button>
@@ -67,7 +68,7 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                             placeholder="e.g., 240"
                             value={step.duration_override ?? ''}
                             onChange={e => handleNumericFieldChange('duration_override', e.target.value)}
-                            disabled={isSaving}
+                            disabled={fieldsDisabled}
                         />
                     </div>
                     <div className={`${styles.inputGroup} ${styles.twoColumn}`}>
@@ -78,7 +79,7 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                             placeholder="e.g., 30"
                             value={step.stretch_fold_interval_minutes ?? ''}
                             onChange={e => handleNumericFieldChange('stretch_fold_interval_minutes', e.target.value)}
-                            disabled={isSaving}
+                            disabled={fieldsDisabled}
                         />
                     </div>
                 </>
@@ -91,7 +92,7 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                         placeholder="e.g., 60"
                         value={step.duration_override ?? ''}
                         onChange={e => handleNumericFieldChange('duration_override', e.target.value)}
-                        disabled={isSaving}
+                        disabled={fieldsDisabled}
                     />
                 </div>
             )}
@@ -104,7 +105,7 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                     placeholder="e.g., 24"
                     value={step.target_temperature_celsius ?? ''}
                     onChange={e => handleFloatFieldChange('target_temperature_celsius', e.target.value)}
-                    disabled={isSaving}
+                    disabled={fieldsDisabled}
                 />
             </div>
 
@@ -118,7 +119,7 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                             placeholder="e.g., 20"
                             value={step.contribution_pct ?? ''}
                             onChange={e => handleFloatFieldChange('contribution_pct', e.target.value)}
-                            disabled={isSaving}
+                            disabled={fieldsDisabled}
                         />
                     </div>
                     <div className={`${styles.inputGroup} ${styles.twoColumn}`}>
@@ -129,7 +130,7 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                             placeholder="e.g., 100"
                             value={step.target_hydration ?? ''}
                             onChange={e => handleFloatFieldChange('target_hydration', e.target.value)}
-                            disabled={isSaving}
+                            disabled={fieldsDisabled}
                         />
                     </div>
                 </>
@@ -140,7 +141,7 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                     id={`step-notes-${index}`}
                     value={step.notes || ''}
                     onChange={e => handleFieldChange('notes', e.target.value)}
-                    disabled={isSaving}
+                    disabled={fieldsDisabled}
                 />
             </div>
         </div>

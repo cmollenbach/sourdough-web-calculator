@@ -30,6 +30,7 @@ import styles from './RecipeCalculator.module.css';
  * @param {string | null} props.bulkFermentStepId
  * @param {string | null} props.levainStepId
  * @param {function(object): string} props.getStepDnDId
+ * @param {boolean} props.isInTemplateMode
  */
 function StepsColumn({
     recipeSteps,
@@ -42,6 +43,7 @@ function StepsColumn({
     isSaving,
     bulkFermentStepId,
     levainStepId,
+    isInTemplateMode,
     getStepDnDId
 }) {
     const sensors = useSensors(
@@ -71,6 +73,7 @@ function StepsColumn({
                                     onStepChange={onStepChange}
                                     onDeleteStep={onDeleteStep}
                                     isSaving={isSaving}
+                                    isInTemplateMode={isInTemplateMode}
                                     bulkFermentStepId={bulkFermentStepId}
                                     levainStepId={levainStepId}
                                 />
@@ -79,8 +82,7 @@ function StepsColumn({
                         <button
                             type="button"
                             onClick={onAddStep}
-                            disabled={isLoadingPredefinedSteps || predefinedSteps.length === 0 || isSaving}
-                            className={`${styles.addStepButton} ${styles.buttonWithSpinner}`}
+                             disabled={isLoadingPredefinedSteps || predefinedSteps.length === 0 || isSaving || isInTemplateMode}                            className={`${styles.addStepButton} ${styles.buttonWithSpinner}`}
                         >
                             {addStepButtonText()}
                             {isSaving && <span className={styles.buttonSpinner}></span>}

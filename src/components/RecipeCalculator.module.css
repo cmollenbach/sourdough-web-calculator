@@ -400,4 +400,53 @@
     .mainActions button { 
         flex-basis: 100%;
     }
+    /* src/components/RecipeCalculator.module.css */
+/* ... other styles ... */
+
+.baseTemplatesSection {
+    background-color: var(--color-surface-alt, #fdfdfd); /* Or var(--color-surface) */
+    border: 1px solid var(--color-border);
+    padding: calc(var(--spacing-unit) * 2);
+    border-radius: var(--border-radius-medium);
+    margin-bottom: calc(var(--spacing-unit) * 2.5);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.baseTemplatesSection h3 {
+    margin-top: 0;
+    margin-bottom: calc(var(--spacing-unit) * 1.5);
+    font-size: 1.3rem;
+    color: var(--color-primary-darker);
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: var(--spacing-unit);
+}
+
+.baseTemplatesSection ul {
+    list-style: none;
+    padding: 0;
+}
+
+.baseTemplatesSection li {
+    margin-bottom: calc(var(--spacing-unit) * 2);
+    padding-bottom: calc(var(--spacing-unit) * 1.5);
+    border-bottom: 1px solid var(--color-secondary);
+}
+
+.baseTemplatesSection li:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.baseTemplatesSection h4 {
+    margin-top: 0;
+    margin-bottom: calc(var(--spacing-unit) * 0.5);
+    font-size: 1.1rem;
+}
+
+.baseTemplatesSection p {
+    font-size: 0.9rem;
+    color: var(--color-text-muted);
+    margin-bottom: var(--spacing-unit);
+}
 }

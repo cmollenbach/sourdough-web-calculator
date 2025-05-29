@@ -10,8 +10,9 @@ import styles from './RecipeCalculator.module.css';
  * @param {function} props.clearFeedback
  * @param {boolean} [props.isInputsSection] - Flag to determine which fields to render
  * @param {boolean} [props.isManageSection] - Flag to determine which fields to render
+ * @param {boolean} [props.isInTemplateMode]
  */
-function RecipeFields({ recipe, onFieldChange, isSaving, clearFeedback, isInputsSection, isManageSection }) {
+function RecipeFields({ recipe, onFieldChange, isSaving, clearFeedback, isInputsSection, isManageSection , isInTemplateMode}) {
     const handleInputChange = (e) => {
         const { id, value } = e.target;
         let processedValue = value;
@@ -41,7 +42,7 @@ function RecipeFields({ recipe, onFieldChange, isSaving, clearFeedback, isInputs
         <>
             {isInputsSection && (
                 <>
-                    <div className={`${styles.inputGroup} ${styles.twoColumn}`}>
+                     <div className={`${styles.inputGroup} ${styles.twoColumn}`}>
                         <label htmlFor="targetDoughWeight">Target Dough Weight (g):</label>
                         <input
                             type="number"
@@ -49,7 +50,7 @@ function RecipeFields({ recipe, onFieldChange, isSaving, clearFeedback, isInputs
                             name="targetDoughWeight"
                             value={recipe.targetDoughWeight}
                             onChange={handleInputChange}
-                            disabled={isSaving}
+                            disabled={isSaving} // Keep this, as it's the primary input even in template mode
                         />
                     </div>
                     <div className={`${styles.inputGroup} ${styles.twoColumn}`}>
@@ -60,7 +61,8 @@ function RecipeFields({ recipe, onFieldChange, isSaving, clearFeedback, isInputs
                             name="hydrationPercentage"
                             value={recipe.hydrationPercentage}
                             onChange={handleInputChange}
-                            disabled={isSaving}
+                            // Disable if saving OR if in template mode (value comes from template)
+                            disabled={isSaving || (isInTemplateMode && isInputsSection)} 
                         />
                     </div>
                     <div className={`${styles.inputGroup} ${styles.twoColumn}`}>
@@ -71,9 +73,10 @@ function RecipeFields({ recipe, onFieldChange, isSaving, clearFeedback, isInputs
                             name="saltPercentage"
                             value={recipe.saltPercentage}
                             onChange={handleInputChange}
-                            onBlur={handleSaltBlur} // Format on blur
-                            step="0.1" // Allows decimal input
-                            disabled={isSaving}
+                            onBlur={handleSaltBlur}
+                            step="0.1"
+                            // Disable if saving OR if in template mode (value comes from template)
+                            disabled={isSaving || (isInTemplateMode && isInputsSection)}
                         />
                     </div>
                 </>
