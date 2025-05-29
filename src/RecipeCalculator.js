@@ -348,10 +348,7 @@ function RecipeCalculator() {
         hydrationPercentage: state.hydrationPercentage,
         saltPercentage: state.saltPercentage,
     };
-    const recipeManagementFields = {
-        recipe_name: state.recipe_name,
-        description: state.description,
-    };
+
 
     const handleRecipeFieldChange = (field, value) => {
         dispatch({ type: 'SET_RECIPE_FIELD', field, payload: value });

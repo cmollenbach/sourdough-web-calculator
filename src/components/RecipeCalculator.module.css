@@ -518,15 +518,6 @@
     margin-top: auto; 
 }
 
-/* Remove old ul/li specific styles for .baseTemplatesSection if they were targeting list items directly */
-.baseTemplatesSection ul,
-.baseTemplatesSection li {
-    /* Commented out as card layout replaces list structure for templates */
-    /* list-style: none; */
-    /* padding: 0; */
-    /* margin-bottom: 0; */
-    /* border-bottom: none; */
-}
 
 
 /* Responsive adjustments */
@@ -564,9 +555,6 @@
         padding: calc(var(--spacing-unit) * 1.5);
     }
 
-    .mainTitle { /* This class is no longer in RecipeCalculator.module.css if moved to App.css */
-        /* font-size: 1.7rem; */ 
-    }
 
     .templateCardsContainer { /* For 1 column on small screens */
         grid-template-columns: 1fr;

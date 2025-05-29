@@ -87,9 +87,7 @@ nav ul.main-nav-list { /* Target the specific ul */
   min-height: 40px; 
 }
 
-.nav-item-left {
-  /* Takes space as needed */
-}
+
 
 .nav-item-center {
   text-align: center; /* Centers the text within this list item */
@@ -273,14 +271,6 @@ input[type="submit"]:disabled {
 main {
   padding: var(--spacing-unit);
 }
-
-/* Utility classes (remains the same) */
-.text-error { /* ... */ }
-.text-success { /* ... */ }
-
-/* General Loading Spinner (remains the same) */
-.loading-spinner { /* ... */ }
-.loading-app { /* ... */ }
 
 @keyframes spin {
   to {
