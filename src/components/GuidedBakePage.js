@@ -1,10 +1,12 @@
 // src/components/GuidedBakePage.js
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import RecipeService from '../services/RecipeService';
-import styles from './GuidedBakePage.module.css'; // Uses the updated GuidedBakePage.module.css
+import RecipeService, { AuthError } from '../services/RecipeService'; // Import AuthError
+import styles from './GuidedBakePage.module.css';
 import Modal from './common/Modal';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext'; 
+import { useActiveBakes } from '../contexts/ActiveBakesContext';
 
 const formatTime = (totalSeconds) => {
     if (totalSeconds < 0) totalSeconds = 0;
@@ -18,10 +20,11 @@ function GuidedBakePage() {
     const location = useLocation();
     const navigate = useNavigate();
     const { addToast } = useToast();
-
+    const { logout } = useAuth(); 
+    const { refreshActiveBakes } = useActiveBakes(); // Get refreshActiveBakes from context
     const [isLoading, setIsLoading] = useState(true);
     const [isActionLoading, setIsActionLoading] = useState(false);
-    const [error, setError] = useState('');
+    // const [error, setError] = useState(''); // Removed, using toasts instead
 
     const [bakeSessionDetails, setBakeSessionDetails] = useState(null);
     const [currentStep, setCurrentStep] = useState(null);
@@ -68,19 +71,21 @@ function GuidedBakePage() {
 
     const loadData = useCallback(async (calledFromAction = false) => {
         if (!calledFromAction) setIsLoading(true);
-        setError('');
         resetSAndFState();
 
         try {
+            if (!bakeLogId) {
+                addToast("No Bake Log ID available for this page.", "error");
+                if (!calledFromAction) setIsLoading(false);
+                navigate('/'); // Navigate away if no ID
+                return;
+            }
+
             let dataToProcess;
             if (!calledFromAction && location.state && location.state.initialBakeData) {
                 dataToProcess = location.state.initialBakeData;
-            } else if (bakeLogId) {
-                dataToProcess = await RecipeService.getBakeLogDetails(bakeLogId);
             } else {
-                setError("No Bake Log ID provided.");
-                if (!calledFromAction) setIsLoading(false);
-                return;
+                dataToProcess = await RecipeService.getBakeLogDetails(bakeLogId);
             }
 
             if (dataToProcess) {
@@ -91,7 +96,7 @@ function GuidedBakePage() {
                 if (stepData) {
                     setCurrentStep(stepData);
                     setUserNotes(stepData.user_step_notes || stepData.notes || '');
-
+                    // ... (timer and S&F setup logic remains the same)
                     if (stepData.planned_duration_minutes != null && stepData.actual_start_timestamp) {
                         const startTime = new Date(stepData.actual_start_timestamp).getTime();
                         const now = Date.now();
@@ -112,37 +117,46 @@ function GuidedBakePage() {
                         const numFolds = intervalSecs > 0 ? Math.floor(totalDurationSecs / intervalSecs) : 0;
                         
                         setTotalFolds(numFolds > 0 ? numFolds : 0);
-                        setCurrentFold(0);
+                        setCurrentFold(0); // Reset fold count on data load
                         setSAndFIntervalDuration(intervalSecs);
-                        setSAndFTimeRemaining(intervalSecs);
+                        setSAndFTimeRemaining(intervalSecs); // Reset S&F timer
                         
                         if (numFolds > 0 && dataToProcess.status === 'active') {
-                            setIsSAndFTimerActive(true);
+                            setIsSAndFTimerActive(true); // Start S&F timer if conditions met
                         } else {
                              setIsSAndFTimerActive(false);
                         }
                     }
                 } else {
-                    if (dataToProcess.status === 'active') setError("No current active step found.");
-                    else setError('');
+                    if (dataToProcess.status === 'active') {
+                        addToast("No current active step found for this bake.", "info");
+                    }
                     setCurrentStep(null);
                     setIsTimerActive(false);
                 }
                 setNextStepPreview(dataToProcess.nextStepDetails || null);
-            } else if (bakeLogId) {
-                setError("Bake session not found or failed to load.");
+            } else if (bakeLogId) { // Only if bakeLogId was present but dataToProcess is not
+                addToast("Bake session not found or failed to load.", "error");
             }
         } catch (err) {
-            setError(err.message || "Failed to load bake session.");
+            console.error("GuidedBakePage: Error in loadData:", err);
+            if (err instanceof AuthError) {
+                addToast(err.message || "Your session has expired. Please log in again.", "error");
+                logout();
+                navigate('/login');
+            } else {
+                addToast(err.message || "Failed to load bake session.", "error");
+            }
         } finally {
             if (!calledFromAction) setIsLoading(false);
         }
-    }, [bakeLogId, location.state, resetSAndFState]);
+    }, [bakeLogId, location.state, resetSAndFState, addToast, logout, navigate]);
 
     useEffect(() => {
         loadData();
     }, [loadData]);
 
+    // Main step timer useEffect (with S&F stop logic from previous step)
     useEffect(() => {
         let intervalId;
         if (bakeStatus === 'active' && isTimerActive && currentStep?.planned_duration_minutes != null && currentStep?.actual_start_timestamp) {
@@ -159,6 +173,10 @@ function GuidedBakePage() {
                     setMainTimerJustCompleted(true);
                     setTimeout(() => setMainTimerJustCompleted(false), 1000);
                     addToast("Main step timer finished!", "info");
+                    if (isSAndFStep) {
+                       setIsSAndFTimerActive(false);
+                       setSAndFAlertMessage('');
+                    }
                 } else {
                     setTimeRemaining(remaining);
                 }
@@ -167,8 +185,9 @@ function GuidedBakePage() {
             if(isTimerActive) setIsTimerActive(false);
         }
         return () => clearInterval(intervalId);
-    }, [isTimerActive, currentStep, bakeStatus, addToast]);
+    }, [isTimerActive, currentStep, bakeStatus, addToast, isSAndFStep]);
 
+    // S&F timer useEffect (with isSAndFStep in dependency array from previous step)
     useEffect(() => {
         let sAndFIntervalId;
         if (bakeStatus === 'active' && isSAndFTimerActive && isSAndFStep && currentFold < totalFolds) {
@@ -199,33 +218,39 @@ function GuidedBakePage() {
         } else if (currentFold >= totalFolds && isSAndFTimerActive) {
             setIsSAndFTimerActive(false);
         }
-        return () => clearInterval(sAndFIntervalId);
-    }, [bakeStatus, isSAndFTimerActive, sAndFTimeRemaining, isSAndFStep, currentFold, totalFolds, sAndFIntervalDuration, addToast]);
+       return () => clearInterval(sAndFIntervalId);
+    }, [bakeStatus, isSAndFTimerActive, isSAndFStep, sAndFTimeRemaining, currentFold, totalFolds, sAndFIntervalDuration, addToast]);
 
-    const handleStatusUpdate = async (newStatus) => {
+const handleStatusUpdate = async (newStatus) => {
         if (!bakeLogId) return;
         setIsActionLoading(true);
-        setError('');
         try {
             const result = await RecipeService.updateBakeStatus(bakeLogId, newStatus);
-            setBakeStatus(result.newStatus);
+            setBakeStatus(result.newStatus); 
+            
             if (newStatus === 'paused') {
                 setIsTimerActive(false);
                 setIsSAndFTimerActive(false);
                 addToast("Bake Paused", "info");
             } else if (newStatus === 'active') {
-                await loadData(true);
+                await loadData(true); // Reload to get current step and timer states
                 addToast("Bake Resumed", "info");
             } else if (newStatus === 'abandoned') {
-                setIsTimerActive(false);
-                setIsSAndFTimerActive(false);
                 addToast("Bake session abandoned.", "warning");
-                navigate('/');
+                await refreshActiveBakes(); // <-- Call refresh here
+                setIsTimerActive(false);    // Explicitly stop timers
+                setIsSAndFTimerActive(false);
+                navigate('/'); // Navigate after refresh
             }
         } catch (err) {
-            const errorMsg = err.message || `Failed to update status to ${newStatus}.`;
-            setError(errorMsg);
-            addToast(errorMsg, "error");
+            console.error(`GuidedBakePage: Error updating status to ${newStatus}:`, err);
+            if (err instanceof AuthError) {
+                addToast(err.message || "Your session has expired. Please log in again.", "error");
+                logout();
+                navigate('/login');
+            } else {
+                addToast(err.message || `Failed to update status to ${newStatus}.`, "error");
+            }
         } finally {
             setIsActionLoading(false);
         }
@@ -235,11 +260,11 @@ function GuidedBakePage() {
     const handleResumeBake = () => handleStatusUpdate('active');
     
     const confirmAbandonBake = () => {
-        handleStatusUpdate('abandoned');
+        handleStatusUpdate('abandoned'); // This will navigate on success
         closeModal();
     };
 
-    const handleAbandonBake = () => {
+    const handleAbandonBake = () => { // This function definition is fine
         openModal(
             "Confirm Abandon Bake",
             "Are you sure you want to abandon this bake session? This action cannot be undone.",
@@ -252,19 +277,21 @@ function GuidedBakePage() {
 
     const handleCompleteStep = async () => {
         if (!currentStep || !bakeSessionDetails?.bakeLogId) {
-            const errorMsg = "Cannot complete step: essential bake data is missing.";
-            setError(errorMsg);
-            addToast(errorMsg, "error");
+            addToast("Cannot complete step: essential bake data is missing.", "error");
             return;
         }
         setIsActionLoading(true);
-        setError('');
-        setIsTimerActive(false);
+        setIsTimerActive(false); // Stop main timer locally on completion attempt
+        // setIsSAndFTimerActive(false); // S&F timer is stopped by main timer effect or when all folds done
         setTimeRemaining(0);
 
         try {
             const currentStepLogIdentifier = currentStep.bake_step_log_id || currentStep.bakeStepLogId;
-            if (!currentStepLogIdentifier) throw new Error("Missing current bake step log ID.");
+            if (!currentStepLogIdentifier) {
+                addToast("Missing current bake step log ID.", "error");
+                setIsActionLoading(false); // Reset loading state
+                return; // Exit early
+            }
 
             const result = await RecipeService.completeStep(
                 bakeSessionDetails.bakeLogId,
@@ -273,7 +300,7 @@ function GuidedBakePage() {
             );
             addToast("Step marked as complete!", "success");
 
-            if (result.bakeLogId && !result.nextStepDetails && !result.currentStepDetails) {
+            if (result.bakeLogId && !result.nextStepDetails && !result.currentStepDetails) { // Bake finished
                 setBakeStatus('completed');
                 setCurrentStep(null);
                 setNextStepPreview(null);
@@ -283,14 +310,20 @@ function GuidedBakePage() {
                     "Congratulations on completing your bake! 🎉",
                     [{ text: "Back to Recipes", onClick: () => { closeModal(); navigate('/'); }, variant: 'primary' }]
                 );
-                return;
+                return; // No further loadData needed if bake is finished
             }
-            await loadData(true);
+            await loadData(true); // Load next step details
         } catch (err) {
-            const errorMsg = err.message || "Failed to complete step.";
-            setError(errorMsg);
-            addToast(errorMsg, "error");
-            await loadData(true);
+            console.error("GuidedBakePage: Error completing step:", err);
+            if (err instanceof AuthError) {
+                addToast(err.message || "Your session has expired. Please log in again.", "error");
+                logout();
+                navigate('/login');
+            } else {
+                addToast(err.message || "Failed to complete step.", "error");
+                // Consider if loadData(true) is still appropriate here or if timers should be reset based on error
+                await loadData(true); // Attempt to reload current state on non-auth error
+            }
         } finally {
             setIsActionLoading(false);
         }
@@ -300,17 +333,28 @@ function GuidedBakePage() {
         setSAndFAlertMessage('');
     };
 
-    if (isLoading && !currentStep && bakeStatus !== 'completed' && bakeStatus !== 'abandoned') {
+    // Removed the `if (error && !modalState.isOpen)` block
+    // The loading message now doesn't depend on local `error` state
+    if (isLoading && !bakeSessionDetails && bakeStatus !== 'completed' && bakeStatus !== 'abandoned') {
         return <p className={`feedback-message feedback-message-info ${styles.loadingMessage}`}>Loading bake session...</p>;
     }
-    // Only show general page error if modal isn't open (modal might handle its own error display or context)
-    if (error && !modalState.isOpen) {
-        return <p className={`feedback-message feedback-message-error ${styles.errorMessage}`}>Error: {error}</p>;
+    
+    // Fallback for when no bakeLogId or critical data is missing after initial load attempts.
+    // This condition might be hit if `loadData` navigates away due to no bakeLogId,
+    // or if it fails to set bakeSessionDetails after an error toast.
+    if (!bakeLogId || (!isLoading && !bakeSessionDetails && !modalState.isOpen && bakeStatus !== 'completed' && bakeStatus !== 'abandoned')) {
+        // A toast for "No Bake Log ID" or "Failed to load" would have already been shown by loadData.
+        // This is a fallback display if the component still tries to render without essential data.
+        return (
+            <div className={styles.guidedBakePageContainer}>
+                 <p className={`feedback-message feedback-message-info`}>
+                    Could not display bake session. Please try starting again from a recipe or check active bakes.
+                 </p>
+                 <button onClick={() => navigate('/')} className="btn btn-primary">Go Home</button>
+            </div>
+        );
     }
-    if (!bakeLogId || (!isLoading && !bakeSessionDetails && !error && !modalState.isOpen)) {
-        return <p className={`feedback-message feedback-message-info`}>Could not load bake session. Please try starting again from a recipe.</p>;
-    }
-
+    
     const isBakeOngoing = currentStep && (bakeStatus === 'active' || bakeStatus === 'paused');
     
     const getTimerDisplayClasses = (isMainTimer = true) => {
@@ -323,13 +367,20 @@ function GuidedBakePage() {
             classes += ` ${styles.pausedTimer}`;
         } else if (isMainTimer && timeRemaining <=0 && currentStep?.planned_duration_minutes != null) {
             classes += ` ${styles.finishedTimer}`;
-        } else if (!isMainTimer && sAndFTimeRemaining <= 0 && currentFold >= totalFolds) {
+        } else if (!isMainTimer && sAndFTimeRemaining <= 0 && currentFold >= totalFolds) { // Changed: check currentFold vs totalFolds for S&F finished
             classes += ` ${styles.finishedTimer}`;
         }
         return classes;
     };
 
     return (
+        // ... JSX Structure ...
+        // Conditional rendering for S&F section (using the fix from previous step)
+        // {isSAndFStep && totalFolds > 0 && 
+        //     (currentStep?.planned_duration_minutes == null || timeRemaining > 0) && (
+        //     <section>...</section>
+        // )}
+        // ... rest of the JSX (which seems largely fine for toast usage)
         <div className={styles.guidedBakePageContainer}>
             <Modal
                 isOpen={modalState.isOpen}
@@ -364,8 +415,8 @@ function GuidedBakePage() {
                     <button onClick={() => navigate('/')} className="btn btn-secondary">Back to Recipes</button>
                 </section>
             )}
-             {!isBakeOngoing && bakeStatus !== 'completed' && bakeStatus !== 'abandoned' && !error && (
-                 <p className="feedback-message feedback-message-info">No active step to display for this bake. It might be loading, completed, or an issue occurred.</p>
+             {!isBakeOngoing && bakeStatus !== 'completed' && bakeStatus !== 'abandoned' && !isLoading && (
+                 <p className="feedback-message feedback-message-info">No active step to display for this bake. It might be completed, abandoned, or an issue occurred.</p>
             )}
 
             {isBakeOngoing && currentStep && (
@@ -412,8 +463,9 @@ function GuidedBakePage() {
                             <p>No main duration timer for this step.</p>
                         )}
                     </section>
-
-                    {isSAndFStep && totalFolds > 0 && (
+                    
+                    {isSAndFStep && totalFolds > 0 && 
+                     (currentStep?.planned_duration_minutes == null || timeRemaining > 0) && (
                         <section className={`${styles.section} ${styles.timerSection} ${styles.sAndFTimerSection}`}>
                             <h3>Stretch & Fold Progress</h3>
                             {currentFold < totalFolds ? (
@@ -422,7 +474,7 @@ function GuidedBakePage() {
                                     {isSAndFTimerActive && bakeStatus === 'active' && (
                                          <p className={getTimerDisplayClasses(false)}>{formatTime(sAndFTimeRemaining)} until next fold</p>
                                     )}
-                                    {!isSAndFTimerActive && bakeStatus === 'active' && currentFold < totalFolds && (
+                                    {!isSAndFTimerActive && bakeStatus === 'active' && currentFold < totalFolds && timeRemaining > 0 && ( // Ensure main timer is also running for S&F start button
                                         <button
                                             onClick={() => {
                                                 setSAndFTimeRemaining(sAndFIntervalDuration);
@@ -474,7 +526,7 @@ function GuidedBakePage() {
                         <button
                             onClick={handleCompleteStep}
                             className="btn btn-primary buttonWithSpinner"
-                            disabled={isActionLoading || isLoading || bakeStatus === 'paused'}
+                            disabled={isActionLoading || isLoading || bakeStatus === 'paused' || (currentStep?.planned_duration_minutes != null && timeRemaining > 0 && isTimerActive) }
                         >
                             {isActionLoading ? 'Completing...' : 'Mark Step as Complete'}
                             {isActionLoading && <span className="buttonSpinner"></span>}

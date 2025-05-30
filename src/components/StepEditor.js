@@ -45,7 +45,7 @@ function StepEditor({
     isInTemplateMode,
     bulkFermentStepId,
     levainStepId,
-    dndListeners // Ensure this prop is received from SortableStepItem
+    dndListeners 
 }) {
     const isBulkFermentSFStep = step.step_id === bulkFermentStepId;
     const isLevainStep = step.step_id === levainStepId;
@@ -71,9 +71,9 @@ function StepEditor({
     const renderInfoButton = (termKey, termDisplayName) => (
         <button
             type="button"
-            onMouseDown={(e) => e.stopPropagation()} // Prevent DnD
+            onMouseDown={(e) => e.stopPropagation()} 
             onClick={(e) => {
-                e.stopPropagation(); // Also stop click propagation
+                e.stopPropagation(); 
                 handleInfoClickInternal(termKey, termDisplayName);
             }}
             title={`Get AI explanation for ${termDisplayName || termKey.replace(/_/g, ' ')}`}
@@ -100,18 +100,16 @@ function StepEditor({
     return (
         <div className={styles.stepItemEditor}>
             <div className={styles.stepHeader}>
-                {/* DRAG HANDLE: Apply dndListeners here */}
                 <div
-                    {...(dndListeners || {})} // Spread dndListeners; provide empty object if undefined
+                    {...(dndListeners || {})} 
                     className={styles.dragHandle}
-                    style={{ cursor: dndListeners ? 'grab' : 'default', padding: '0 8px', marginRight: '8px', touchAction: 'none' }} // Prevent scrolling on touch
+                    style={{ cursor: dndListeners ? 'grab' : 'default', padding: '0 8px', marginRight: '8px', touchAction: 'none' }} 
                     title="Drag to reorder step"
-                    // The onMouseDown for the handle itself comes from dndListeners
                 >
                     ☰
                 </div>
                 <h4>
-                     <span className={styles.stepOrderText}>Step {step.step_order || index + 1}:</span>
+                    {/* The "Step X:" span has been removed */}
                     {predefinedSteps && predefinedSteps.length > 0 && !isInTemplateMode ? (
                         <select
                             value={step.step_id || ''}
@@ -140,7 +138,7 @@ function StepEditor({
                     <button
                         type="button"
                         className="btn btn-danger btn-small"
-                        onMouseDown={(e) => e.stopPropagation()} // Crucial for preventing drag
+                        onMouseDown={(e) => e.stopPropagation()} 
                         onClick={(e) => {
                             e.stopPropagation();
                             console.log(`StepEditor Remove button clicked for index: ${index}, step_order: ${step.step_order}, step_name: "${step.step_name}"`);

@@ -1,20 +1,20 @@
 // src/RecipeCalculator.js
 import React, { useState, useEffect, useCallback, useReducer } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
-import { useNavigate } // Removed Link as it was only for active bakes resume
-from 'react-router-dom';
-import RecipeService from './services/RecipeService';
+import { useNavigate } from 'react-router-dom';
+import RecipeService, { AuthError } from './services/RecipeService'; // Import AuthError
 import RecipeFields from './components/RecipeFields';
 import RecipeManagementActions from './components/RecipeManagementActions';
 import RecipeResults from './components/RecipeResults';
 import StepsColumn from './components/StepsColumn';
 import BaseTemplates from './components/BaseTemplates';
-import Modal from './components/common/Modal'; // Keep Modal for delete confirmation
+import Modal from './components/common/Modal';
 
 import styles from './components/RecipeCalculator.module.css';
 import { useAuth } from './contexts/AuthContext';
 import { useData } from './contexts/DataContext';
 import { useToast } from './contexts/ToastContext';
+import { useActiveBakes } from './contexts/ActiveBakesContext';
 
 import {
     LEVAIN_BUILD_STEP_NAME,
@@ -29,6 +29,7 @@ import {
 } from './utils/recipeUtils';
 
 const initialState = {
+    // ... (initialState remains the same)
     ...INITIAL_RECIPE_FIELDS,
     currentRecipeId: null,
     isLoadingRecipes: false,
@@ -43,6 +44,7 @@ const initialState = {
 };
 
 function recipeReducer(state, action) {
+    // ... (recipeReducer remains the same)
     switch (action.type) {
         case 'SET_FIELD':
             return { ...state, [action.field]: action.payload };
@@ -227,26 +229,22 @@ function RecipeCalculator() {
     const navigate = useNavigate();
     const { addToast } = useToast();
     const [isStartingBake, setIsStartingBake] = useState(false);
-    const [startBakeError, setStartBakeError] = useState('');
-    const { isLoggedIn } = useAuth();
+    // const [startBakeError, setStartBakeError] = useState(''); // Removed, use toast
+    const { isLoggedIn, logout } = useAuth(); 
+    const { refreshActiveBakes } = useActiveBakes(); 
     const {
         predefinedSteps, levainStepIdDynamic, bulkFermentStepIdDynamic,
         isLoadingPredefinedSteps, predefinedStepsError
     } = useData();
 
-    // Modal state and functions (for delete confirmation)
     const [modalState, setModalState] = useState({ isOpen: false, title: '', content: null, actions: [] });
     const openModal = (title, content, actions = []) => setModalState({ isOpen: true, title, content, actions });
     const closeModal = () => setModalState({ isOpen: false, title: '', content: null, actions: [] });
 
     const clearFeedback = useCallback(() => {
         dispatch({ type: 'CLEAR_FEEDBACK' });
-        setStartBakeError('');
-        // No longer need to clear activeBakesError here
+        // setStartBakeError(''); // Removed
     }, []);
-
-    // Active Bakes functionality (state and useEffect) has been removed from here.
-    // It's now handled by ActiveBakesContext and displayed in App.js navbar.
 
     const recipeInputFields = {
         targetDoughWeight: state.targetDoughWeight,
@@ -270,19 +268,28 @@ function RecipeCalculator() {
     }, [predefinedSteps, levainStepIdDynamic, addToast]);
 
     const fetchUserRecipesList = useCallback(async () => {
-        if (!isLoggedIn()) return;
+        if (!isLoggedIn()) {
+            dispatch({ type: 'SET_FIELD', field: 'savedRecipes', payload: [] });
+            return;
+        }
         dispatch({ type: 'SET_LOADING', field: 'isLoadingRecipes', payload: true });
         try {
             const data = await RecipeService.getUserRecipes();
             dispatch({ type: 'SET_FIELD', field: 'savedRecipes', payload: data || [] });
+            // Optional: addToast("Your recipes loaded.", "success"); // Could be noisy on every login
         } catch (error) {
             console.error("RecipeCalculator: Error fetching user recipes:", error);
-            addToast(error.message || "Failed to load your recipes.", "error");
+            if (error instanceof AuthError) {
+                addToast(error.message || "Your session has expired. Please log in again.", "error");
+                logout();
+            } else {
+                addToast(error.message || "Failed to load your recipes.", "error");
+            }
             dispatch({ type: 'SET_FIELD', field: 'savedRecipes', payload: [] });
         } finally {
             dispatch({ type: 'SET_LOADING', field: 'isLoadingRecipes', payload: false });
         }
-    }, [isLoggedIn, addToast]);
+    }, [isLoggedIn, addToast, logout]);
 
     useEffect(() => {
         if (isLoggedIn()) {
@@ -313,27 +320,33 @@ function RecipeCalculator() {
         setCalculationResults(newResults);
     }, [state.targetDoughWeight, state.hydrationPercentage, state.saltPercentage, state.steps, levainStepIdDynamic]);
 
-    useEffect(() => {
-        const fetchBaseTemplates = async () => {
-            if (!isLoggedIn()) return;
-            dispatch({ type: 'SET_LOADING_BASE_TEMPLATES', payload: true });
-            try {
-                const templates = await RecipeService.getBaseRecipeTemplates();
-                dispatch({ type: 'SET_BASE_RECIPE_TEMPLATES', payload: templates || [] });
-            } catch (error) {
-                console.error("RecipeCalculator: Error fetching base recipe templates:", error);
+    const fetchBaseTemplates = useCallback(async () => { // Wrapped in useCallback
+        if (!isLoggedIn()) return;
+        dispatch({ type: 'SET_LOADING_BASE_TEMPLATES', payload: true });
+        try {
+            const templates = await RecipeService.getBaseRecipeTemplates();
+            dispatch({ type: 'SET_BASE_RECIPE_TEMPLATES', payload: templates || [] });
+        } catch (error) {
+            console.error("RecipeCalculator: Error fetching base recipe templates:", error);
+            if (error instanceof AuthError) {
+                addToast(error.message || "Session expired fetching templates. Please log in again.", "error");
+                logout();
+            } else {
                 addToast(error.message || "Failed to load base templates.", "error");
-                dispatch({ type: 'SET_BASE_RECIPE_TEMPLATES', payload: [] });
-            } finally {
-                 dispatch({ type: 'SET_LOADING_BASE_TEMPLATES', payload: false });
             }
-        };
+            dispatch({ type: 'SET_BASE_RECIPE_TEMPLATES', payload: [] });
+        } finally {
+             dispatch({ type: 'SET_LOADING_BASE_TEMPLATES', payload: false });
+        }
+    }, [isLoggedIn, addToast, logout, dispatch]); // Added dispatch
+
+    useEffect(() => {
         if(isLoggedIn()) {
             fetchBaseTemplates();
         } else {
             dispatch({ type: 'SET_BASE_RECIPE_TEMPLATES', payload: [] });
         }
-    }, [isLoggedIn, addToast]);
+    }, [isLoggedIn, fetchBaseTemplates]); // fetchBaseTemplates is now stable
 
     const handleLoadRecipeChange = async (event) => {
         clearFeedback();
@@ -355,18 +368,24 @@ function RecipeCalculator() {
             addToast(`Recipe "${processedData.recipe_name}" loaded.`, "info");
         } catch (error) {
             console.error("RecipeCalculator: Error fetching specific recipe:", error);
-            addToast(error.message || "Failed to load selected recipe.", "error");
-            handleClearForm();
+            if (error instanceof AuthError) {
+                addToast(error.message || "Session expired. Please log in again.", "error");
+                logout();
+            } else {
+                addToast(error.message || "Failed to load selected recipe.", "error");
+            }
+            // Optionally clear form or revert selection on error
+            // handleClearForm(); 
+            dispatch({ type: 'SET_FIELD', field: 'selectedRecipeToLoad', payload: state.currentRecipeId || '' }); // Revert to previously loaded/saved recipe
         } finally {
             dispatch({ type: 'SET_LOADING', field: 'isLoadingRecipes', payload: false });
         }
     };
 
-    const handleStartGuidedBake = async () => {
+   const handleStartGuidedBake = async () => {
         clearFeedback();
         if (!state.currentRecipeId) {
             addToast('Please load or save a recipe to start a guided bake.', "warning");
-            setStartBakeError('Please load or save a recipe to start a guided bake.'); // Keep for potential inline display if needed
             return;
         }
 
@@ -375,20 +394,23 @@ function RecipeCalculator() {
             const bakeSessionData = await RecipeService.startBake(state.currentRecipeId);
             if (bakeSessionData && bakeSessionData.bakeLogId) {
                 addToast(`Guided bake for "${state.recipe_name}" started!`, "success");
+                await refreshActiveBakes(); // <-- Call refresh here
                 navigate(`/bake/${bakeSessionData.bakeLogId}`, {
                     state: { initialBakeData: bakeSessionData }
                 });
             } else {
-                const errorMsg = 'Failed to initiate bake session. Missing session ID.';
+                const errorMsg = bakeSessionData?.message || 'Failed to initiate bake session. Missing session ID.';
                 addToast(errorMsg, "error");
-                setStartBakeError(errorMsg);
-                console.error("Start bake response missing bakeLogId:", bakeSessionData);
+                console.error("Start bake response missing bakeLogId or has error message:", bakeSessionData);
             }
         } catch (err) {
             console.error("RecipeCalculator: Error starting guided bake:", err);
-            const errorMsg = err.message || 'An unexpected error occurred while starting the bake.';
-            addToast(errorMsg, "error");
-            setStartBakeError(errorMsg);
+            if (err instanceof AuthError) {
+                addToast(err.message || "Your session has expired. Please log in again.", "error");
+                logout();
+            } else {
+                addToast(err.message || 'An unexpected error occurred while starting the bake.', "error");
+            }
         } finally {
             setIsStartingBake(false);
         }
@@ -402,10 +424,12 @@ function RecipeCalculator() {
             additionalData: { predefinedSteps: predefinedSteps || [], levainStepIdDynamic, bulkFermentStepIdDynamic }
         });
         addToast(`Template "${template.recipe_name}" loaded. Modify and save as new.`, "info");
-    }, [predefinedSteps, levainStepIdDynamic, bulkFermentStepIdDynamic, addToast, clearFeedback]);
+    }, [predefinedSteps, levainStepIdDynamic, bulkFermentStepIdDynamic, addToast, clearFeedback, dispatch]); // Added dispatch
+
 
     const handleSaveOrUpdateRecipe = async () => {
         clearFeedback();
+        // ... (existing validation logic using addToast - this is good) ...
         const trimmedRecipeName = state.recipe_name.trim();
 
         if (!trimmedRecipeName) {
@@ -441,6 +465,7 @@ function RecipeCalculator() {
         }
 
         dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: true });
+        // ... (recipePayload creation) ...
         const recipePayload = {
             recipe_name: trimmedRecipeName, description: state.description,
             targetDoughWeight: parseFloat(state.targetDoughWeight),
@@ -462,21 +487,27 @@ function RecipeCalculator() {
             if (isUpdatingExistingUserRecipe) {
                 await RecipeService.updateRecipe(state.currentRecipeId, recipePayload);
                 resultMessage = 'Recipe updated successfully!';
-                const updatedRecipeData = await RecipeService.getRecipeById(state.currentRecipeId);
+                // fetch the updated recipe to ensure form is in sync with DB, especially IDs
+                const updatedRecipeData = await RecipeService.getRecipeById(state.currentRecipeId); 
                 const processedData = processLoadedRecipeData(updatedRecipeData);
                 dispatch({ type: 'SET_FULL_RECIPE_FORM', payload: { recipeData: processedData, predefinedSteps: predefinedSteps || [] } });
             } else {
                 const result = await RecipeService.saveRecipe(recipePayload);
                 resultMessage = 'Recipe saved successfully!';
-                const newRecipeData = result.recipe;
+                const newRecipeData = result.recipe; 
                 const processedNewData = processLoadedRecipeData(newRecipeData);
                 dispatch({ type: 'SET_FULL_RECIPE_FORM', payload: { recipeData: processedNewData, predefinedSteps: predefinedSteps || [] } });
             }
             addToast(resultMessage, "success");
-            fetchUserRecipesList();
+            fetchUserRecipesList(); // Refresh the list of saved recipes
         } catch (error) {
             console.error("RecipeCalculator: Error saving/updating recipe:", error);
-            addToast(error.message || "Failed to save recipe.", "error");
+            if (error instanceof AuthError) {
+                addToast(error.message || "Session expired. Please log in again.", "error");
+                logout();
+            } else {
+                addToast(error.message || "Failed to save recipe.", "error");
+            }
         } finally {
             dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: false });
         }
@@ -485,23 +516,33 @@ function RecipeCalculator() {
     const confirmActualDelete = async () => {
         closeModal();
         clearFeedback();
-        dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: true });
+        if (!state.currentRecipeId) { // Should not happen if modal is opened correctly
+            addToast("No recipe selected for deletion.", "error");
+            return;
+        }
+        dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: true }); // Use isSaving to disable buttons
         try {
             await RecipeService.deleteRecipe(state.currentRecipeId);
             addToast('Recipe deleted successfully!', "success");
-            handleClearForm();
-            fetchUserRecipesList();
+            handleClearForm(); // Clear form and currentRecipeId
+            fetchUserRecipesList(); // Refresh list
         } catch (error) {
             console.error("RecipeCalculator: Error deleting recipe:", error);
-            addToast(error.message || "Failed to delete recipe.", "error");
+            if (error instanceof AuthError) {
+                addToast(error.message || "Session expired. Please log in again.", "error");
+                logout();
+            } else {
+                addToast(error.message || "Failed to delete recipe.", "error");
+            }
         } finally {
             dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: false });
         }
     };
     
+    // handleDeleteRecipe remains largely the same, it opens the modal
     const handleDeleteRecipe = () => {
         if (!state.currentRecipeId) {
-            addToast('No recipe loaded to delete.', "error");
+            addToast('No recipe loaded to delete.', "error"); // Changed from feedbackMessage to toast
             return;
         }
         openModal(
@@ -514,6 +555,7 @@ function RecipeCalculator() {
         );
     };
 
+    // ... (handleStepChange, handleAddStep, handleDeleteStep, handleDragEnd, getFeedbackClassName remain the same) ...
     const handleStepChange = (index, field, value) => {
         dispatch({ type: 'UPDATE_STEP', index, payload: { [field]: value }, additionalContext: { predefinedSteps: predefinedSteps || [], levainStepIdDynamic, bulkFermentStepIdDynamic } });
     };
@@ -538,6 +580,7 @@ function RecipeCalculator() {
         return 'feedback-message';
     };
 
+
     return (
         <>
             <Modal
@@ -549,14 +592,13 @@ function RecipeCalculator() {
                 {modalState.content}
             </Modal>
 
+            {/* predefinedStepsError from DataContext will be toasted there if that context is updated */}
             {predefinedStepsError && ( <p className="feedback-message feedback-message-error"> {predefinedStepsError} </p> )}
+            
+            {/* state.feedbackMessage is for synchronous form validation, keep as is unless toasts are preferred here too */}
             {state.feedbackMessage.text && ( <p className={getFeedbackClassName()}> {state.feedbackMessage.text} </p> )}
-            {startBakeError && ( <p className="feedback-message feedback-message-error"> {startBakeError} </p> )}
-            {/* activeBakesError inline display removed as per request to remove active bakes from this page body */}
-
-
-            {/* Active Bakes Section Removed from here */}
-
+            
+            {/* Removed startBakeError paragraph, as it's now handled by toasts in handleStartGuidedBake */}
 
             {isLoggedIn() && (predefinedSteps && predefinedSteps.length > 0) && (
                  <BaseTemplates

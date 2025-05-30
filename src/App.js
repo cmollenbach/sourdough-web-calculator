@@ -1,6 +1,6 @@
 // src/App.js
-import React, { useState } from 'react'; // Added useState for dropdown visibility
-import { BrowserRouter as Router, Routes, Route, NavLink, Navigate, Link } from 'react-router-dom'; // Added Link
+import React, { useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, NavLink, Navigate, Link } from 'react-router-dom';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import RecipeCalculator from './RecipeCalculator';
@@ -10,12 +10,12 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
 import { ToastProvider } from './contexts/ToastContext';
 import ToastContainer from './components/common/ToastContainer';
-import { ActiveBakesProvider, useActiveBakes } from './contexts/ActiveBakesContext'; // Import new context
+import { ActiveBakesProvider, useActiveBakes } from './contexts/ActiveBakesContext';
 import './App.css';
 
 function AppContent() {
     const { token, currentUser, isLoading, logout } = useAuth();
-    const { activeBakes, isLoadingActiveBakes } = useActiveBakes(); // Consume active bakes
+    const { activeBakes, isLoadingActiveBakes } = useActiveBakes();
     const [isBakesDropdownOpen, setIsBakesDropdownOpen] = useState(false);
 
     if (isLoading) {
@@ -37,11 +37,10 @@ function AppContent() {
                         </NavLink>
                     </li>
 
-                    {/* Active Bakes Dropdown */}
                     {token && hasActiveBakes && (
                         <li className="nav-item-active-bakes">
                             <button
-                                className="active-bakes-label btn-nav-link" // New class for green label, styled like a nav link
+                                className="active-bakes-label btn-nav-link"
                                 onClick={() => setIsBakesDropdownOpen(prev => !prev)}
                                 aria-expanded={isBakesDropdownOpen}
                                 aria-haspopup="true"
@@ -53,17 +52,44 @@ function AppContent() {
                                     {isLoadingActiveBakes ? (
                                         <li>Loading...</li>
                                     ) : (
-                                        activeBakes.map(bake => (
-                                            <li key={bake.bake_log_id || bake.bakeLogId}>
-                                                <Link 
-                                                    to={`/bake/${bake.bake_log_id || bake.bakeLogId}`}
-                                                    onClick={() => setIsBakesDropdownOpen(false)} // Close dropdown on click
-                                                >
-                                                    {bake.recipe_name || bake.recipeName || 'Unnamed Recipe'}
-                                                    <small> (Status: {bake.status || 'Unknown'})</small>
-                                                </Link>
-                                            </li>
-                                        ))
+                                        activeBakes.map(bake => {
+                                            // ** USE THE CORRECT FIELD: bake.bake_start_timestamp **
+                                            const startTimeISO = bake.bake_start_timestamp; 
+                                            let formattedStartTime = 'Unknown start time';
+
+                                            if (startTimeISO) {
+                                                try {
+                                                    const dateObj = new Date(startTimeISO);
+                                                    if (!isNaN(dateObj.getTime())) {
+                                                        formattedStartTime = dateObj.toLocaleString([], {
+                                                            year: 'numeric', month: 'numeric', day: 'numeric',
+                                                            hour: '2-digit', minute: '2-digit'
+                                                        });
+                                                    } else {
+                                                        console.warn(`Invalid date format for bake ${bake.bakeLogId}. Timestamp was:`, startTimeISO);
+                                                    }
+                                                } catch (e) {
+                                                    console.error("Error formatting bake start time for bake " + bake.bakeLogId + ":", e, "Timestamp was:", startTimeISO);
+                                                }
+                                            } else {
+                                                console.warn(`bake_start_timestamp field missing for bake ${bake.bakeLogId}. Bake object:`, JSON.stringify(bake));
+                                            }
+                                            
+                                            return (
+                                                <li key={bake.bakeLogId}> {/* Use bakeLogId from mapped object */}
+                                                    <Link 
+                                                        to={`/bake/${bake.bakeLogId}`}
+                                                        onClick={() => setIsBakesDropdownOpen(false)}
+                                                    >
+                                                        {bake.recipeName || 'Unnamed Recipe'} {/* Use recipeName from mapped object */}
+                                                        <small> (Status: {bake.status || 'Unknown'})</small>
+                                                        <small className="bake-start-time-dropdown"> 
+                                                            Started: {formattedStartTime}
+                                                        </small>
+                                                    </Link>
+                                                </li>
+                                            );
+                                        })
                                     )}
                                 </ul>
                             )}
@@ -90,7 +116,6 @@ function AppContent() {
             </nav>
             <main>
                 <Routes>
-                    {/* ... your existing routes ... */}
                     <Route path="/public-calculator" element={!token ? <PublicRecipeCalculatorView /> : <Navigate to="/" replace />} />
                     <Route path="/login" element={!token ? <LoginPage /> : <Navigate to="/" replace />} />
                     <Route path="/register" element={!token ? <RegisterPage /> : <Navigate to="/" replace />} />
@@ -107,17 +132,17 @@ function App() {
     return (
         <Router>
             <AuthProvider>
-                <DataProvider>
-                    <ToastProvider>
-                        <ActiveBakesProvider> {/* Add ActiveBakesProvider here */}
+                <ToastProvider>
+                    <DataProvider>
+                        <ActiveBakesProvider>
                             <div className="App">
                                 <h1 className="app-title">Sourdough Recipe Calculator</h1>
                                 <AppContent />
                                 <ToastContainer />
                             </div>
                         </ActiveBakesProvider>
-                    </ToastProvider>
-                </DataProvider>
+                    </DataProvider>
+                </ToastProvider>
             </AuthProvider>
         </Router>
     );

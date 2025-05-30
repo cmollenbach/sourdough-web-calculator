@@ -82,7 +82,7 @@ function RecipeManagementActions({
                     id="loadRecipeSelect"
                     value={selectedRecipeToLoad}
                     onChange={onLoadRecipeChange}
-                    disabled={isLoadingRecipes || isSaving || isInTemplateMode}
+                    disabled={isLoadingRecipes || isSaving }
                 >
                     <option value="">Select a recipe...</option>
                     {savedRecipes.map(recipe => (

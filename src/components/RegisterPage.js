@@ -2,85 +2,79 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import AuthService from '../services/AuthService';
-import './AuthForm.css'; // Keep for .auth-form-container, .auth-form specific layouts
+import './AuthForm.css';
+import { useToast } from '../contexts/ToastContext'; // Import useToast
 
 function RegisterPage() {
+    const { addToast } = useToast(); // Get addToast
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [successMessage, setSuccessMessage] = useState('');
+    // const [error, setError] = useState(''); // Remove
+    // const [successMessage, setSuccessMessage] = useState(''); // Remove
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleSubmit = async (event) => {
         event.preventDefault();
         setIsLoading(true);
-        setError('');
-        setSuccessMessage('');
+        // setError(''); // Remove
+        // setSuccessMessage(''); // Remove
 
         try {
             const data = await AuthService.register(email, password);
-            console.log('Registration successful via AuthService:', data);
-            setSuccessMessage(data.message || 'Registration successful! Please login.');
+            addToast(data.message || 'Registration successful! Please login.', "success");
             setTimeout(() => {
                 navigate('/login');
-            }, 2000);
+            }, 2000); // Keep timeout for user to see toast
         } catch (err) {
+            addToast(err.message || 'Failed to register. Please try again.', "error");
             console.error('Registration failed via AuthService:', err);
-            setError(err.message || 'Failed to register. Please try again.');
         } finally {
             setIsLoading(false);
         }
     };
 
     return (
-        <div className="auth-form-container"> {/* Uses AuthForm.css for layout */}
-            <div className="auth-form"> {/* Uses AuthForm.css for layout */}
+        <div className="auth-form-container">
+            <div className="auth-form">
                 <h2>Register</h2>
-                {/* UPDATED to use global feedback message classes */}
-                {error && <p className="feedback-message feedback-message-error">{error}</p>}
-                {successMessage && <p className="feedback-message feedback-message-success">{successMessage}</p>}
+                {/* Removed: {error && <p className="feedback-message feedback-message-error">{error}</p>} */}
+                {/* Removed: {successMessage && <p className="feedback-message feedback-message-success">{successMessage}</p>} */}
                 <form onSubmit={handleSubmit}>
-                    <div className="input-group"> {/* Uses AuthForm.css for layout */}
-                        <label htmlFor="register-email">Email:</label>
+                    <div className="form-group">
+                        <label htmlFor="email">Email</label>
                         <input
+                            id="email"
                             type="email"
-                            id="register-email"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={e => setEmail(e.target.value)}
                             required
-                            disabled={isLoading}
-                            placeholder="Enter your email"
-                            // Base input styles from App.css
+                            autoComplete="email"
                         />
                     </div>
-                    <div className="input-group"> {/* Uses AuthForm.css for layout */}
-                        <label htmlFor="register-password">Password:</label>
+                    <div className="form-group">
+                        <label htmlFor="password">Password</label>
                         <input
+                            id="password"
                             type="password"
-                            id="register-password"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={e => setPassword(e.target.value)}
                             required
-                            minLength="8"
-                            disabled={isLoading}
-                            placeholder="Create a password (min. 8 characters)"
-                            // Base input styles from App.css
+                            autoComplete="new-password"
                         />
                     </div>
-                    {/* UPDATED to use global button classes */}
                     <button
                         type="submit"
-                        className="btn btn-primary buttonWithSpinner" /* Apply width via AuthForm.css or inline if needed */
-                        style={{ width: '100%'}} /* Or add a .btn-block utility in App.css */
+                        className="btn btn-primary buttonWithSpinner"
+                        style={{ width: '100%'}}
                         disabled={isLoading}
                     >
                         {isLoading ? 'Registering...' : 'Register'}
                         {isLoading && <span className="buttonSpinner"></span>}
                     </button>
                 </form>
-                <div className="form-link"> {/* Uses AuthForm.css for layout */}
-                    Already have an account? <Link to="/login">Login</Link> {/* Link styles from App.css */}
+                <div className="form-link">
+                    Already have an account? <Link to="/login">Login</Link>
                 </div>
             </div>
         </div>

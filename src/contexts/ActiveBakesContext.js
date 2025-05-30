@@ -1,8 +1,8 @@
 // src/contexts/ActiveBakesContext.js
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import RecipeService from '../services/RecipeService';
+import RecipeService, { AuthError } from '../services/RecipeService'; // Import AuthError
 import { useAuth } from './AuthContext';
-// Removed: import { useToast } from './ToastContext'; // Not used directly in this version of fetchActiveBakes
+import { useToast } from './ToastContext'; // Import useToast
 
 const ActiveBakesContext = createContext(null);
 
@@ -17,9 +17,9 @@ export const useActiveBakes = () => {
 export const ActiveBakesProvider = ({ children }) => {
     const [activeBakes, setActiveBakes] = useState([]);
     const [isLoadingActiveBakes, setIsLoadingActiveBakes] = useState(false);
-    const [activeBakesError, setActiveBakesError] = useState('');
-    const { isLoggedIn, token } = useAuth();
-    // const { addToast } = useToast(); // addToast not directly used in fetchActiveBakes in this version
+    // const [activeBakesError, setActiveBakesError] = useState(''); // Remove, use toast
+    const { isLoggedIn, token, logout } = useAuth(); // Get logout
+    const { addToast } = useToast(); // Get addToast
 
     const fetchActiveBakes = useCallback(async () => {
         if (!isLoggedIn()) {
@@ -29,26 +29,29 @@ export const ActiveBakesProvider = ({ children }) => {
         }
 
         setIsLoadingActiveBakes(true);
-        setActiveBakesError('');
+        // setActiveBakesError(''); // Remove
         try {
             const data = await RecipeService.getActiveBakes();
             setActiveBakes(data.activeBakes || data || []);
         } catch (error) {
             console.error("ActiveBakesContext: Error fetching active bakes:", error);
             const errorMsg = error.message || "Failed to load active bakes.";
-            setActiveBakesError(errorMsg);
-            // If you want to show a toast here, you'd uncomment the addToast import
-            // and the line below, then addToast would be a necessary dependency.
-            // addToast(errorMsg, "error");
+            if (error instanceof AuthError) {
+                addToast(errorMsg, "error"); // Or a more specific "Session expired..." message
+                logout();
+            } else {
+                addToast(errorMsg, "error");
+            }
+            // setActiveBakesError(errorMsg); // Remove
             setActiveBakes([]);
         } finally {
             setIsLoadingActiveBakes(false);
         }
-    }, [isLoggedIn]); // Removed addToast from here as it's not used in this function block
+    }, [isLoggedIn, addToast, logout]); // Added addToast, logout
 
     useEffect(() => {
         fetchActiveBakes();
-    }, [token, fetchActiveBakes]);
+    }, [token, fetchActiveBakes]); // token dependency ensures re-fetch on login/logout
 
     const refreshActiveBakes = useCallback(() => {
         fetchActiveBakes();
@@ -58,7 +61,7 @@ export const ActiveBakesProvider = ({ children }) => {
     const value = {
         activeBakes,
         isLoadingActiveBakes,
-        activeBakesError,
+        // activeBakesError, // Remove if not used elsewhere
         refreshActiveBakes
     };
 

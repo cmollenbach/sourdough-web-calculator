@@ -1,8 +1,8 @@
 // src/contexts/DataContext.js
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import RecipeService from '../services/RecipeService';
+import RecipeService, { AuthError } from '../services/RecipeService'; // Import AuthError
 import { useAuth } from './AuthContext';
-
+import { useToast } from './ToastContext'; // Import useToast
 import { LEVAIN_BUILD_STEP_NAME } from '../constants/recipeConstants';
 
 const BULK_FERMENT_S_AND_F_STEP_NAME = 'Bulk Fermentation with Stretch and Fold';
@@ -10,12 +10,13 @@ const BULK_FERMENT_S_AND_F_STEP_NAME = 'Bulk Fermentation with Stretch and Fold'
 const DataContext = createContext(null);
 
 export const DataProvider = ({ children }) => {
-    const { isLoggedIn, isLoading: authIsLoading } = useAuth(); // Removed authTokenFromContext as it wasn't directly used in dependencies
+    const { isLoggedIn, isLoading: authIsLoading, logout } = useAuth(); // Get logout
+    const { addToast } = useToast(); // Get addToast
     const [predefinedSteps, setPredefinedSteps] = useState([]);
     const [levainStepIdDynamic, setLevainStepIdDynamic] = useState(null);
     const [bulkFermentStepIdDynamic, setBulkFermentStepIdDynamic] = useState(null);
     const [isLoadingPredefinedSteps, setIsLoadingPredefinedSteps] = useState(false);
-    const [predefinedStepsError, setPredefinedStepsError] = useState('');
+    // const [predefinedStepsError, setPredefinedStepsError] = useState(''); // Remove, use toast
 
     const fetchAndSetData = useCallback(async () => {
         if (authIsLoading) {
@@ -28,14 +29,15 @@ export const DataProvider = ({ children }) => {
             setPredefinedSteps([]);
             setLevainStepIdDynamic(null);
             setBulkFermentStepIdDynamic(null);
-            setPredefinedStepsError('');
+            // setPredefinedStepsError(''); // Remove
             setIsLoadingPredefinedSteps(false);
             return;
         }
 
         setIsLoadingPredefinedSteps(true);
-        setPredefinedStepsError('');
+        // setPredefinedStepsError(''); // Remove
         try {
+            // Assuming getPredefinedSteps might become authenticated or needs robust error handling
             const data = await RecipeService.getPredefinedSteps();
             const steps = data || [];
             setPredefinedSteps(steps);
@@ -47,15 +49,21 @@ export const DataProvider = ({ children }) => {
             setBulkFermentStepIdDynamic(bulkFermentStep ? bulkFermentStep.step_id : null);
 
         } catch (error) {
-            // Consider a more user-friendly error or logging to an error service
-            setPredefinedStepsError(`Failed to load step types: ${error.message}`);
+            console.error("DataContext: Error fetching predefined steps:", error);
+            if (error instanceof AuthError) {
+                addToast(error.message || "Session expired. Please log in again.", "error");
+                logout();
+            } else {
+                addToast(`Failed to load step types: ${error.message}`, "error");
+            }
+            // setPredefinedStepsError(`Failed to load step types: ${error.message}`); // Remove
             setPredefinedSteps([]);
             setLevainStepIdDynamic(null);
             setBulkFermentStepIdDynamic(null);
         } finally {
             setIsLoadingPredefinedSteps(false);
         }
-    }, [isLoggedIn, authIsLoading]); // Removed authTokenFromContext
+    }, [isLoggedIn, authIsLoading, addToast, logout]); // Added addToast, logout
 
     useEffect(() => {
         fetchAndSetData();
@@ -66,7 +74,7 @@ export const DataProvider = ({ children }) => {
         levainStepIdDynamic,
         bulkFermentStepIdDynamic,
         isLoadingPredefinedSteps,
-        predefinedStepsError
+        // predefinedStepsError // Remove if not used elsewhere directly
     };
 
     return (
@@ -79,14 +87,12 @@ export const DataProvider = ({ children }) => {
 export const useData = () => {
     const context = useContext(DataContext);
     if (context === null || context === undefined ) {
-        // This warning is useful during development
-        // console.warn('useData: DataContext is not yet available or an error occurred in DataProvider. Returning fallback defaults.');
         return {
             predefinedSteps: [],
             levainStepIdDynamic: null,
             bulkFermentStepIdDynamic: null,
             isLoadingPredefinedSteps: true,
-            predefinedStepsError: 'DataContext not available'
+            // predefinedStepsError: 'DataContext not available' // Remove if error state is removed
         };
     }
     return context;
