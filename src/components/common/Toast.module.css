@@ -1,78 +1,69 @@
-/* src/components/common/Modal.module.css */
+/* src/components/common/Toast.module.css */
 
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: var(--modal-overlay-bg, rgba(0, 0, 0, 0.6));
+.toast {
+  /* Base styles are applied by global .toast class in App.css */
+  /* This module handles specific internal layout and interactions */
   display: flex;
   align-items: center;
-  justify-content: center;
-  z-index: 1000;
+  justify-content: space-between;
+  padding: var(--spacing-md); /* Ensure this uses your theme variable */
+  margin-bottom: var(--spacing-sm); /* Space between toasts */
+  min-width: 280px;
+  max-width: 400px;
+  word-break: break-word;
+
+  /* Animation classes for show/hide controlled by Toast.js */
   opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease-in-out, visibility 0s linear 0.2s;
+  transform: translateX(100%); /* Start off-screen to the right */
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
 }
 
-.overlayOpen {
+.toastShow {
   opacity: 1;
-  visibility: visible;
-  transition-delay: 0s;
+  transform: translateX(0);
 }
 
-.modal {
-  background-color: var(--modal-content-bg, var(--color-surface));
-  padding: 0;
-  border-radius: var(--border-radius-medium);
-  box-shadow: var(--modal-box-shadow, 0 5px 15px rgba(0, 0, 0, 0.2));
-  width: 90%;
-  max-width: 500px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  transform: scale(0.95);
-  transition: transform 0.2s ease-in-out;
-}
-
-.overlayOpen .modal {
-  transform: scale(1);
-}
-
-.header {
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-bottom: 1px solid var(--modal-header-border, var(--color-border-light));
-  color: var(--color-primary-darker, var(--color-text));
-  font-size: var(--font-size-large);
-  font-family: var(--font-family-headings);
-  font-weight: var(--font-weight-bold);
+.toastIcon {
+  margin-right: var(--spacing-sm);
   flex-shrink: 0;
-  text-align: left;
+  font-size: 1.1em; /* Example size for Unicode icons */
+  /* Add styles for SVG icons if you use them */
 }
 
-.body {
-  padding: var(--spacing-lg);
-  overflow-y: auto;
+.message {
   flex-grow: 1;
-  line-height: var(--line-height-base);
-  font-size: 1rem;
-  color: var(--color-text);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: inherit; /* Inherit color from parent .toast type class */
 }
 
-.footer {
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-top: 1px solid var(--modal-footer-border, var(--color-border-light));
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-sm);
-  flex-shrink: 0;
-  background-color: var(--color-secondary);
-  border-bottom-left-radius: var(--border-radius-medium);
-  border-bottom-right-radius: var(--border-radius-medium);
+.closeButton {
+  background: none;
+  border: none;
+  color: inherit; /* Inherits color from the toast's text color */
+  opacity: 0.7;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  margin-left: var(--spacing-md);
+  font-size: 1.3em;
+  line-height: 1;
+  align-self: flex-start; /* Good for multi-line toasts */
+}
+
+.closeButton:hover {
+  opacity: 1;
 }
 
 /*
-  Modal buttons will use global .btn classes from App.css.
-  Apply them in Modal.js like: className={`btn btn-primary ${styles.myModalSpecificButtonIfNeeded}`}
+  Type-specific styles (background, text color) are primarily driven by
+  global classes like .toast.toast-info, .toast.toast-success from App.css.
+  However, if you need module-specific overrides for text color within certain types:
 */
+.warning {
+  /* This class would be added alongside global .toast-warning if needed */
+  /* For example, if global .toast-warning sets background, this can fine-tune text */
+  color: var(--color-text); /* Ensuring warning text is dark for light orange background */
+}
+.warning .closeButton { /* Ensure close button is also dark on warning */
+  color: var(--color-text);
+}

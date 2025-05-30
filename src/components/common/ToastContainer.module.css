@@ -1,0 +1,11 @@
+/* src/components/common/ToastContainer.module.css */
+.container {
+  /*
+    Most positioning is handled by the global .toast-container class in App.css.
+    Add any specific structural styles for the container here if needed.
+    For example, if you want to ensure it doesn't interfere with clicks on elements beneath it:
+  */
+  pointer-events: none; /* Allows clicks to pass through the container */
+}
+
+/* Individual toasts within this container will re-enable pointer-events if they are interactive */

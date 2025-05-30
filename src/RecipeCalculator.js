@@ -1,17 +1,20 @@
 // src/RecipeCalculator.js
 import React, { useState, useEffect, useCallback, useReducer } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } // Removed Link as it was only for active bakes resume
+from 'react-router-dom';
 import RecipeService from './services/RecipeService';
 import RecipeFields from './components/RecipeFields';
 import RecipeManagementActions from './components/RecipeManagementActions';
 import RecipeResults from './components/RecipeResults';
 import StepsColumn from './components/StepsColumn';
 import BaseTemplates from './components/BaseTemplates';
+import Modal from './components/common/Modal'; // Keep Modal for delete confirmation
 
-import styles from './components/RecipeCalculator.module.css'; // Keep for specific layout styles
+import styles from './components/RecipeCalculator.module.css';
 import { useAuth } from './contexts/AuthContext';
 import { useData } from './contexts/DataContext';
+import { useToast } from './contexts/ToastContext';
 
 import {
     LEVAIN_BUILD_STEP_NAME,
@@ -142,65 +145,50 @@ function recipeReducer(state, action) {
         case 'SET_LOADING_BASE_TEMPLATES':
             return { ...state, isLoadingBaseTemplates: action.payload };
         case 'LOAD_TEMPLATE_DATA': {
-    const templateData = action.payload.template;
-    const { predefinedSteps, levainStepIdDynamic, bulkFermentStepIdDynamic } = action.additionalData; // Ensure these are correctly passed
-
-    const finalProcessedSteps = (templateData.steps || []).map((rawStep, index) => {
-        const predefined = predefinedSteps.find(ps => ps.step_id === rawStep.step_id);
-        
-        // Define the step object carefully
-        const currentStepName = rawStep.step_name || (predefined ? predefined.step_name : `Unknown Step ID ${rawStep.step_id}`); // CORRECTED: Use rawStep.step_id
-
-        const step = {
-            ...rawStep, // Spread rawStep first
-            step_name: currentStepName, // Assign the determined name
-            // Ensure numeric conversions and defaults are applied correctly
-            duration_override: rawStep.duration_override != null ? Number(rawStep.duration_override) : (predefined?.defaultDurationMinutes ?? null),
-            target_temperature_celsius: rawStep.target_temperature_celsius != null ? Number(rawStep.target_temperature_celsius) : null,
-            contribution_pct: rawStep.contribution_pct != null ? Number(rawStep.contribution_pct) : null,
-            target_hydration: rawStep.target_hydration != null ? Number(rawStep.target_hydration) : null,
-            stretch_fold_interval_minutes: rawStep.stretch_fold_interval_minutes != null ? Number(rawStep.stretch_fold_interval_minutes) : null,
-            notes: rawStep.notes || (predefined ? predefined.description : '') || '',
-            
-            recipe_step_id: undefined, // Mark as not having a DB ID for this new instance
-            temp_client_id: Date.now() + index + Math.random() + '_template_step', // Ensure a NEW unique client ID
-            step_order: rawStep.step_order || index + 1, // Ensure step_order is present
-        };
-        
-        // Apply defaults if it's a specific step type and values are missing
-        if (Number(step.step_id) === levainStepIdDynamic) {
-            const levainDefaultFromPredefined = predefinedSteps.find(ps => ps.step_id === levainStepIdDynamic);
-            const levainDefault = levainDefaultFromPredefined || DEFAULT_LEVAIN_STEP_TEMPLATE;
-
-            step.contribution_pct = step.contribution_pct ?? levainDefault.contribution_pct;
-            step.target_hydration = step.target_hydration ?? levainDefault.target_hydration;
-            
-            if (step.duration_override == null) { // Check if still null after initial assignment
-                step.duration_override = levainDefault.duration_override ?? (levainDefaultFromPredefined ? levainDefaultFromPredefined.defaultDurationMinutes : null);
-            }
+            const templateData = action.payload.template;
+            const { predefinedSteps, levainStepIdDynamic, bulkFermentStepIdDynamic } = action.additionalData;
+            const finalProcessedSteps = (templateData.steps || []).map((rawStep, index) => {
+                const predefined = predefinedSteps.find(ps => ps.step_id === rawStep.step_id);
+                const currentStepName = rawStep.step_name || (predefined ? predefined.step_name : `Unknown Step ID ${rawStep.step_id}`);
+                const step = {
+                    ...rawStep, step_name: currentStepName,
+                    duration_override: rawStep.duration_override != null ? Number(rawStep.duration_override) : (predefined?.defaultDurationMinutes ?? null),
+                    target_temperature_celsius: rawStep.target_temperature_celsius != null ? Number(rawStep.target_temperature_celsius) : null,
+                    contribution_pct: rawStep.contribution_pct != null ? Number(rawStep.contribution_pct) : null,
+                    target_hydration: rawStep.target_hydration != null ? Number(rawStep.target_hydration) : null,
+                    stretch_fold_interval_minutes: rawStep.stretch_fold_interval_minutes != null ? Number(rawStep.stretch_fold_interval_minutes) : null,
+                    notes: rawStep.notes || (predefined ? predefined.description : '') || '',
+                    recipe_step_id: undefined,
+                    temp_client_id: Date.now() + index + Math.random() + '_template_step',
+                    step_order: rawStep.step_order || index + 1,
+                };
+                if (Number(step.step_id) === levainStepIdDynamic) {
+                    const levainDefaultFromPredefined = predefinedSteps.find(ps => ps.step_id === levainStepIdDynamic);
+                    const levainDefault = levainDefaultFromPredefined || DEFAULT_LEVAIN_STEP_TEMPLATE;
+                    step.contribution_pct = step.contribution_pct ?? levainDefault.contribution_pct;
+                    step.target_hydration = step.target_hydration ?? levainDefault.target_hydration;
+                    if (step.duration_override == null) {
+                        step.duration_override = levainDefault.duration_override ?? (levainDefaultFromPredefined ? levainDefaultFromPredefined.defaultDurationMinutes : null);
+                    }
+                }
+                if (Number(step.step_id) === bulkFermentStepIdDynamic && step.stretch_fold_interval_minutes == null) {
+                    step.stretch_fold_interval_minutes = 30;
+                }
+                return step;
+            });
+            return {
+                ...state,
+                recipe_name: templateData.recipe_name ? `${templateData.recipe_name} (Copy)` : 'New Recipe from Template',
+                description: templateData.description || '',
+                targetDoughWeight: String(templateData.targetDoughWeight || INITIAL_RECIPE_FIELDS.targetDoughWeight),
+                hydrationPercentage: String(templateData.hydrationPercentage || INITIAL_RECIPE_FIELDS.hydrationPercentage),
+                saltPercentage: String(parseFloat(templateData.saltPercentage || INITIAL_RECIPE_FIELDS.saltPercentage).toFixed(1)),
+                steps: finalProcessedSteps,
+                currentRecipeId: null, selectedRecipeToLoad: '',
+                isInTemplateMode: true, activeTemplateId: templateData.recipe_id,
+                feedbackMessage: { type: '', text: '' }, // Toast used for template loaded message
+            };
         }
-        if (Number(step.step_id) === bulkFermentStepIdDynamic && step.stretch_fold_interval_minutes == null) {
-            step.stretch_fold_interval_minutes = 30;
-        }
-
-        return step;
-    });
-
-    return {
-        ...state,
-        recipe_name: templateData.recipe_name ? `${templateData.recipe_name} (Copy)` : 'New Recipe from Template',
-        description: templateData.description || '',
-        targetDoughWeight: String(templateData.targetDoughWeight || INITIAL_RECIPE_FIELDS.targetDoughWeight),
-        hydrationPercentage: String(templateData.hydrationPercentage || INITIAL_RECIPE_FIELDS.hydrationPercentage),
-        saltPercentage: String(parseFloat(templateData.saltPercentage || INITIAL_RECIPE_FIELDS.saltPercentage).toFixed(1)),
-        steps: finalProcessedSteps,
-        currentRecipeId: null,
-        selectedRecipeToLoad: '',
-        isInTemplateMode: true,
-        activeTemplateId: templateData.recipe_id,
-        feedbackMessage: { type: '', text: `Template "${templateData.recipe_name}" loaded. Modify and save as new recipe.` }, // More informative
-    };
-}
         case 'CLEAR_FORM': {
             const { predefinedSteps, levainStepIdDynamic } = action.payload;
             const initialSteps = [];
@@ -212,20 +200,15 @@ function recipeReducer(state, action) {
                         step_id: levainTemplate.step_id,
                         step_name: levainTemplate.step_name,
                         duration_override: levainTemplate.defaultDurationMinutes ?? DEFAULT_LEVAIN_STEP_TEMPLATE.duration_override,
-                        temp_client_id: Date.now(),
-                        step_order: 1,
+                        temp_client_id: Date.now(), step_order: 1,
                      });
                 }
             }
             return {
-                ...state,
-                ...INITIAL_RECIPE_FIELDS,
+                ...state, ...INITIAL_RECIPE_FIELDS,
                 saltPercentage: parseFloat(INITIAL_RECIPE_FIELDS.saltPercentage).toFixed(1),
-                steps: initialSteps,
-                currentRecipeId: null,
-                selectedRecipeToLoad: '',
-                isInTemplateMode: false,
-                activeTemplateId: null,
+                steps: initialSteps, currentRecipeId: null, selectedRecipeToLoad: '',
+                isInTemplateMode: false, activeTemplateId: null,
                 feedbackMessage: { type: '', text: '' },
             };
         }
@@ -242,22 +225,28 @@ function RecipeCalculator() {
     });
 
     const navigate = useNavigate();
+    const { addToast } = useToast();
     const [isStartingBake, setIsStartingBake] = useState(false);
     const [startBakeError, setStartBakeError] = useState('');
     const { isLoggedIn } = useAuth();
     const {
-        predefinedSteps,
-        levainStepIdDynamic,
-        bulkFermentStepIdDynamic,
-        isLoadingPredefinedSteps,
-        predefinedStepsError
+        predefinedSteps, levainStepIdDynamic, bulkFermentStepIdDynamic,
+        isLoadingPredefinedSteps, predefinedStepsError
     } = useData();
+
+    // Modal state and functions (for delete confirmation)
+    const [modalState, setModalState] = useState({ isOpen: false, title: '', content: null, actions: [] });
+    const openModal = (title, content, actions = []) => setModalState({ isOpen: true, title, content, actions });
+    const closeModal = () => setModalState({ isOpen: false, title: '', content: null, actions: [] });
 
     const clearFeedback = useCallback(() => {
         dispatch({ type: 'CLEAR_FEEDBACK' });
-        setStartBakeError(''); // Also clear bake-specific error
+        setStartBakeError('');
+        // No longer need to clear activeBakesError here
     }, []);
 
+    // Active Bakes functionality (state and useEffect) has been removed from here.
+    // It's now handled by ActiveBakesContext and displayed in App.js navbar.
 
     const recipeInputFields = {
         targetDoughWeight: state.targetDoughWeight,
@@ -277,59 +266,49 @@ function RecipeCalculator() {
 
     const handleClearForm = useCallback(() => {
         dispatch({ type: 'CLEAR_FORM', payload: { predefinedSteps, levainStepIdDynamic } });
-    }, [predefinedSteps, levainStepIdDynamic]);
-
+        addToast("Form cleared.", "info");
+    }, [predefinedSteps, levainStepIdDynamic, addToast]);
 
     const fetchUserRecipesList = useCallback(async () => {
         if (!isLoggedIn()) return;
         dispatch({ type: 'SET_LOADING', field: 'isLoadingRecipes', payload: true });
-        clearFeedback();
         try {
             const data = await RecipeService.getUserRecipes();
-            const recipes = data || [];
-            dispatch({ type: 'SET_FIELD', field: 'savedRecipes', payload: recipes });
+            dispatch({ type: 'SET_FIELD', field: 'savedRecipes', payload: data || [] });
         } catch (error) {
             console.error("RecipeCalculator: Error fetching user recipes:", error);
-            dispatch({ type: 'SET_FEEDBACK', payload: { type: 'error', text: `Failed to load recipes: ${error.message}` } });
+            addToast(error.message || "Failed to load your recipes.", "error");
             dispatch({ type: 'SET_FIELD', field: 'savedRecipes', payload: [] });
         } finally {
             dispatch({ type: 'SET_LOADING', field: 'isLoadingRecipes', payload: false });
         }
-    }, [isLoggedIn, clearFeedback]);
+    }, [isLoggedIn, addToast]);
 
     useEffect(() => {
         if (isLoggedIn()) {
             fetchUserRecipesList();
         } else {
             dispatch({ type: 'SET_FIELD', field: 'savedRecipes', payload: [] });
-            if (predefinedSteps && predefinedSteps.length > 0 && levainStepIdDynamic) {
+            if (predefinedSteps && predefinedSteps.length > 0 && levainStepIdDynamic && !state.currentRecipeId && !state.isInTemplateMode) {
                  handleClearForm();
             }
         }
-    }, [isLoggedIn, fetchUserRecipesList, handleClearForm, predefinedSteps, levainStepIdDynamic]);
-
+    }, [isLoggedIn, fetchUserRecipesList, predefinedSteps, levainStepIdDynamic, state.currentRecipeId, state.isInTemplateMode, handleClearForm]);
 
     useEffect(() => {
         if (
-            isLoggedIn() &&
-            predefinedSteps && predefinedSteps.length > 0 &&
-            levainStepIdDynamic &&
-            !state.currentRecipeId &&
-            state.steps.length === 0 &&
-            !state.isInTemplateMode
+            isLoggedIn() && predefinedSteps && predefinedSteps.length > 0 &&
+            levainStepIdDynamic && !state.currentRecipeId &&
+            state.steps.length === 0 && !state.isInTemplateMode
         ) {
             handleClearForm();
         }
     }, [isLoggedIn, predefinedSteps, levainStepIdDynamic, state.currentRecipeId, state.steps.length, state.isInTemplateMode, handleClearForm]);
 
-
     useEffect(() => {
         const newResults = calculateRecipe(
-            state.targetDoughWeight,
-            state.hydrationPercentage,
-            state.saltPercentage,
-            state.steps,
-            levainStepIdDynamic
+            state.targetDoughWeight, state.hydrationPercentage, state.saltPercentage,
+            state.steps, levainStepIdDynamic
         );
         setCalculationResults(newResults);
     }, [state.targetDoughWeight, state.hydrationPercentage, state.saltPercentage, state.steps, levainStepIdDynamic]);
@@ -338,17 +317,13 @@ function RecipeCalculator() {
         const fetchBaseTemplates = async () => {
             if (!isLoggedIn()) return;
             dispatch({ type: 'SET_LOADING_BASE_TEMPLATES', payload: true });
-            dispatch({ type: 'SET_FEEDBACK', payload: { type: '', text: '' } });
             try {
                 const templates = await RecipeService.getBaseRecipeTemplates();
                 dispatch({ type: 'SET_BASE_RECIPE_TEMPLATES', payload: templates || [] });
             } catch (error) {
                 console.error("RecipeCalculator: Error fetching base recipe templates:", error);
-                dispatch({
-                    type: 'SET_FEEDBACK',
-                    payload: { type: 'error', text: `Failed to load base templates: ${error.message}` }
-                });
-                 dispatch({ type: 'SET_BASE_RECIPE_TEMPLATES', payload: [] });
+                addToast(error.message || "Failed to load base templates.", "error");
+                dispatch({ type: 'SET_BASE_RECIPE_TEMPLATES', payload: [] });
             } finally {
                  dispatch({ type: 'SET_LOADING_BASE_TEMPLATES', payload: false });
             }
@@ -358,7 +333,7 @@ function RecipeCalculator() {
         } else {
             dispatch({ type: 'SET_BASE_RECIPE_TEMPLATES', payload: [] });
         }
-    }, [isLoggedIn]);
+    }, [isLoggedIn, addToast]);
 
     const handleLoadRecipeChange = async (event) => {
         clearFeedback();
@@ -377,202 +352,173 @@ function RecipeCalculator() {
                 type: 'SET_FULL_RECIPE_FORM',
                 payload: { recipeData: processedData, predefinedSteps: predefinedSteps || [] }
             });
+            addToast(`Recipe "${processedData.recipe_name}" loaded.`, "info");
         } catch (error) {
             console.error("RecipeCalculator: Error fetching specific recipe:", error);
-            dispatch({ type: 'SET_FEEDBACK', payload: { type: 'error', text: `Failed to load recipe: ${error.message}` } });
+            addToast(error.message || "Failed to load selected recipe.", "error");
             handleClearForm();
         } finally {
             dispatch({ type: 'SET_LOADING', field: 'isLoadingRecipes', payload: false });
         }
     };
+
     const handleStartGuidedBake = async () => {
+        clearFeedback();
         if (!state.currentRecipeId) {
-            setStartBakeError('Please load or save a recipe to start a guided bake.');
-            setTimeout(() => setStartBakeError(''), 5000);
-            return;
-        }
-        if (!isLoggedIn()) {
-            setStartBakeError('Please login to start a guided bake.');
-            setTimeout(() => setStartBakeError(''), 5000);
+            addToast('Please load or save a recipe to start a guided bake.', "warning");
+            setStartBakeError('Please load or save a recipe to start a guided bake.'); // Keep for potential inline display if needed
             return;
         }
 
         setIsStartingBake(true);
-        setStartBakeError('');
-        dispatch({ type: 'CLEAR_FEEDBACK' });
-
         try {
             const bakeSessionData = await RecipeService.startBake(state.currentRecipeId);
             if (bakeSessionData && bakeSessionData.bakeLogId) {
+                addToast(`Guided bake for "${state.recipe_name}" started!`, "success");
                 navigate(`/bake/${bakeSessionData.bakeLogId}`, {
                     state: { initialBakeData: bakeSessionData }
                 });
             } else {
-                setStartBakeError('Failed to initiate bake session. Missing session ID from server response.');
+                const errorMsg = 'Failed to initiate bake session. Missing session ID.';
+                addToast(errorMsg, "error");
+                setStartBakeError(errorMsg);
                 console.error("Start bake response missing bakeLogId:", bakeSessionData);
             }
         } catch (err) {
             console.error("RecipeCalculator: Error starting guided bake:", err);
-            setStartBakeError(err.message || 'An unexpected error occurred while starting the bake.');
+            const errorMsg = err.message || 'An unexpected error occurred while starting the bake.';
+            addToast(errorMsg, "error");
+            setStartBakeError(errorMsg);
         } finally {
             setIsStartingBake(false);
         }
     };
+
      const handleLoadTemplateData = useCallback((template) => {
+        clearFeedback();
         dispatch({
             type: 'LOAD_TEMPLATE_DATA',
             payload: { template: template },
-            additionalData: {
-                predefinedSteps: predefinedSteps || [],
-                levainStepIdDynamic,
-                bulkFermentStepIdDynamic
-            }
+            additionalData: { predefinedSteps: predefinedSteps || [], levainStepIdDynamic, bulkFermentStepIdDynamic }
         });
-    }, [predefinedSteps, levainStepIdDynamic, bulkFermentStepIdDynamic]); // Added dependencies
+        addToast(`Template "${template.recipe_name}" loaded. Modify and save as new.`, "info");
+    }, [predefinedSteps, levainStepIdDynamic, bulkFermentStepIdDynamic, addToast, clearFeedback]);
 
     const handleSaveOrUpdateRecipe = async () => {
         clearFeedback();
         const trimmedRecipeName = state.recipe_name.trim();
 
         if (!trimmedRecipeName) {
-            dispatch({ type: 'SET_FEEDBACK', payload: { type: 'error', text: 'Recipe name is required.' } });
-            return;
+            addToast('Recipe name is required.', "error"); return;
         }
         if (state.steps.length === 0) {
-            dispatch({ type: 'SET_FEEDBACK', payload: { type: 'error', text: 'At least one recipe step is required.' } });
-            return;
+            addToast('At least one recipe step is required.', "error"); return;
         }
         for (const step of state.steps) {
             if (step.step_id == null || step.step_order == null) {
-                 dispatch({ type: 'SET_FEEDBACK', payload: { type: 'error', text: `Each step must have a type and order.`}});
-                 return;
+                 addToast(`Each step must have a type and order.`, "error"); return;
             }
             if (step.step_id === levainStepIdDynamic && (step.contribution_pct == null || step.target_hydration == null)) {
-                dispatch({ type: 'SET_FEEDBACK', payload: { type: 'error', text: `Levain Build step requires Contribution % and Starter Hydration %.`}});
-                return;
+                addToast(`Levain Build step requires Contribution % and Starter Hydration %.`, "error"); return;
             }
             if (step.step_id === bulkFermentStepIdDynamic) {
                 if (step.duration_override == null || step.stretch_fold_interval_minutes == null) {
-                    dispatch({ type: 'SET_FEEDBACK', payload: { type: 'error', text: `Bulk Fermentation with S&F step requires Total Bulk Time and S&F Interval.` }});
-                    return;
+                    addToast(`Bulk Fermentation with S&F step requires Total Bulk Time and S&F Interval.`, "error"); return;
                 }
             }
         }
-
         const isAttemptingToSaveNew = !state.currentRecipeId || state.isInTemplateMode;
-
         if (isAttemptingToSaveNew) {
-            const recipeNameExists = state.savedRecipes.some(
-                (recipe) => recipe.recipe_name === trimmedRecipeName
-            );
+            const recipeNameExists = state.savedRecipes.some(r => r.recipe_name === trimmedRecipeName);
             if (recipeNameExists) {
-                dispatch({
-                    type: 'SET_FEEDBACK',
-                    payload: { type: 'error', text: `A recipe named "${trimmedRecipeName}" already exists. Please choose a different name.` }
-                });
+                addToast(`A recipe named "${trimmedRecipeName}" already exists. Please choose a different name.`, "error");
                 if (state.isInTemplateMode) {
                     dispatch({ type: 'SET_FIELD', field: 'isInTemplateMode', payload: false });
                     dispatch({ type: 'SET_FIELD', field: 'activeTemplateId', payload: null });
                 }
-                dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: false });
                 return;
             }
         }
 
         dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: true });
-
         const recipePayload = {
-            recipe_name: trimmedRecipeName,
-            description: state.description,
+            recipe_name: trimmedRecipeName, description: state.description,
             targetDoughWeight: parseFloat(state.targetDoughWeight),
             hydrationPercentage: parseFloat(state.hydrationPercentage),
             saltPercentage: parseFloat(state.saltPercentage),
             steps: state.steps.map(step => ({
-                step_id: step.step_id,
-                step_order: step.step_order,
-                duration_override: step.duration_override,
-                notes: step.notes,
+                step_id: step.step_id, step_order: step.step_order,
+                duration_override: step.duration_override, notes: step.notes,
                 target_temperature_celsius: step.target_temperature_celsius,
-                contribution_pct: step.contribution_pct,
-                target_hydration: step.target_hydration,
+                contribution_pct: step.contribution_pct, target_hydration: step.target_hydration,
                 stretch_fold_interval_minutes: step.stretch_fold_interval_minutes,
                 recipe_step_id: (state.currentRecipeId && !state.isInTemplateMode && step.recipe_step_id) ? step.recipe_step_id : undefined
             })),
         };
-
         const isUpdatingExistingUserRecipe = state.currentRecipeId && !state.isInTemplateMode;
 
         try {
-            let result;
+            let resultMessage = '';
             if (isUpdatingExistingUserRecipe) {
-                result = await RecipeService.updateRecipe(state.currentRecipeId, recipePayload);
-                dispatch({ type: 'SET_FEEDBACK', payload: { type: 'success', text: 'Recipe updated successfully!' } });
+                await RecipeService.updateRecipe(state.currentRecipeId, recipePayload);
+                resultMessage = 'Recipe updated successfully!';
                 const updatedRecipeData = await RecipeService.getRecipeById(state.currentRecipeId);
                 const processedData = processLoadedRecipeData(updatedRecipeData);
-                dispatch({
-                    type: 'SET_FULL_RECIPE_FORM',
-                    payload: { recipeData: processedData, predefinedSteps: predefinedSteps || [] }
-                });
-
+                dispatch({ type: 'SET_FULL_RECIPE_FORM', payload: { recipeData: processedData, predefinedSteps: predefinedSteps || [] } });
             } else {
-                result = await RecipeService.saveRecipe(recipePayload);
-                dispatch({ type: 'SET_FEEDBACK', payload: { type: 'success', text: 'Recipe saved successfully!' } });
-
+                const result = await RecipeService.saveRecipe(recipePayload);
+                resultMessage = 'Recipe saved successfully!';
                 const newRecipeData = result.recipe;
                 const processedNewData = processLoadedRecipeData(newRecipeData);
-
-                dispatch({
-                    type: 'SET_FULL_RECIPE_FORM',
-                    payload: { recipeData: processedNewData, predefinedSteps: predefinedSteps || [] }
-                });
+                dispatch({ type: 'SET_FULL_RECIPE_FORM', payload: { recipeData: processedNewData, predefinedSteps: predefinedSteps || [] } });
             }
+            addToast(resultMessage, "success");
             fetchUserRecipesList();
         } catch (error) {
             console.error("RecipeCalculator: Error saving/updating recipe:", error);
-            dispatch({ type: 'SET_FEEDBACK', payload: { type: 'error', text: `Failed to save recipe: ${error.message}` } });
+            addToast(error.message || "Failed to save recipe.", "error");
         } finally {
             dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: false });
         }
     };
 
-    const handleDeleteRecipe = async () => {
-        if (!state.currentRecipeId) {
-            dispatch({ type: 'SET_FEEDBACK', payload: {type: 'error', text: 'No recipe loaded to delete.'}});
-            return;
-        }
+    const confirmActualDelete = async () => {
+        closeModal();
         clearFeedback();
         dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: true });
         try {
             await RecipeService.deleteRecipe(state.currentRecipeId);
-            dispatch({ type: 'SET_FEEDBACK', payload: { type: 'success', text: 'Recipe deleted successfully!' } });
+            addToast('Recipe deleted successfully!', "success");
             handleClearForm();
             fetchUserRecipesList();
         } catch (error) {
             console.error("RecipeCalculator: Error deleting recipe:", error);
-            dispatch({ type: 'SET_FEEDBACK', payload: { type: 'error', text: `Failed to delete recipe: ${error.message}` } });
+            addToast(error.message || "Failed to delete recipe.", "error");
         } finally {
             dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: false });
         }
     };
+    
+    const handleDeleteRecipe = () => {
+        if (!state.currentRecipeId) {
+            addToast('No recipe loaded to delete.', "error");
+            return;
+        }
+        openModal(
+            "Confirm Delete",
+            `Are you sure you want to delete the recipe "${state.recipe_name}"? This action cannot be undone.`,
+            [
+                { text: "Cancel", onClick: closeModal, variant: 'secondary' },
+                { text: "Delete Recipe", onClick: confirmActualDelete, variant: 'danger' }
+            ]
+        );
+    };
 
     const handleStepChange = (index, field, value) => {
-        dispatch({
-            type: 'UPDATE_STEP',
-            index,
-            payload: { [field]: value },
-            additionalContext: { predefinedSteps: predefinedSteps || [], levainStepIdDynamic, bulkFermentStepIdDynamic }
-        });
+        dispatch({ type: 'UPDATE_STEP', index, payload: { [field]: value }, additionalContext: { predefinedSteps: predefinedSteps || [], levainStepIdDynamic, bulkFermentStepIdDynamic } });
     };
-
-    const handleAddStep = () => {
-        dispatch({ type: 'ADD_STEP', payload: { predefinedSteps: predefinedSteps || [], levainStepIdDynamic, bulkFermentStepIdDynamic } });
-    };
-
-    const handleDeleteStep = (indexToDelete) => {
-    console.log('Attempting to delete step at index:', indexToDelete); // DEBUG
-    dispatch({ type: 'DELETE_STEP', index: indexToDelete });
-};
-
+    const handleAddStep = () => { dispatch({ type: 'ADD_STEP', payload: { predefinedSteps: predefinedSteps || [], levainStepIdDynamic, bulkFermentStepIdDynamic } }); };
+    const handleDeleteStep = (indexToDelete) => { dispatch({ type: 'DELETE_STEP', index: indexToDelete }); };
     function handleDragEnd(event) {
         const { active, over } = event;
         if (active && over && active.id !== over.id) {
@@ -585,30 +531,32 @@ function RecipeCalculator() {
     }
 
     const getFeedbackClassName = () => {
+        if (!state.feedbackMessage.text) return 'feedback-message hidden';
         if (state.feedbackMessage.type === 'error') return 'feedback-message feedback-message-error';
         if (state.feedbackMessage.type === 'success') return 'feedback-message feedback-message-success';
         if (state.feedbackMessage.type === 'info') return 'feedback-message feedback-message-info';
-        return 'feedback-message'; // Default or hidden
+        return 'feedback-message';
     };
-
 
     return (
         <>
-            {predefinedStepsError && (
-                <p className="feedback-message feedback-message-error"> {/* UPDATED */}
-                    {predefinedStepsError}
-                </p>
-            )}
-            {state.feedbackMessage.text && (
-                <p className={getFeedbackClassName()}> {/* UPDATED */}
-                    {state.feedbackMessage.text}
-                </p>
-            )}
-            {startBakeError && (
-                <p className="feedback-message feedback-message-error"> {/* UPDATED */}
-                    {startBakeError}
-                </p>
-            )}
+            <Modal
+                isOpen={modalState.isOpen}
+                onClose={closeModal}
+                title={modalState.title}
+                footerActions={modalState.actions}
+            >
+                {modalState.content}
+            </Modal>
+
+            {predefinedStepsError && ( <p className="feedback-message feedback-message-error"> {predefinedStepsError} </p> )}
+            {state.feedbackMessage.text && ( <p className={getFeedbackClassName()}> {state.feedbackMessage.text} </p> )}
+            {startBakeError && ( <p className="feedback-message feedback-message-error"> {startBakeError} </p> )}
+            {/* activeBakesError inline display removed as per request to remove active bakes from this page body */}
+
+
+            {/* Active Bakes Section Removed from here */}
+
 
             {isLoggedIn() && (predefinedSteps && predefinedSteps.length > 0) && (
                  <BaseTemplates
@@ -634,52 +582,40 @@ function RecipeCalculator() {
                         />
                     </div>
                     <RecipeResults results={calculationResults} />
-                    <div className={styles.manageRecipesSection}> {/* Renamed from .manageRecipesSection for clarity if needed, or ensure it's styled correctly */}
+                    <div className={styles.manageRecipesSection}>
                          <RecipeManagementActions
-                            recipeName={state.recipe_name}
-                            description={state.description}
+                            recipeName={state.recipe_name} description={state.description}
                             onRecipeNameChange={(value) => handleRecipeFieldChange('recipe_name', value)}
                             onDescriptionChange={(value) => handleRecipeFieldChange('description', value)}
-                            savedRecipes={state.savedRecipes}
-                            selectedRecipeToLoad={state.selectedRecipeToLoad}
+                            savedRecipes={state.savedRecipes} selectedRecipeToLoad={state.selectedRecipeToLoad}
                             onLoadRecipeChange={handleLoadRecipeChange}
                             onSaveOrUpdate={handleSaveOrUpdateRecipe}
-                            onDelete={handleDeleteRecipe}
-                            onClearForm={handleClearForm}
-                            isLoadingRecipes={state.isLoadingRecipes}
-                            isSaving={state.isSaving}
-                            currentRecipeId={state.currentRecipeId}
-                            clearFeedback={clearFeedback}
+                            onDelete={handleDeleteRecipe} onClearForm={handleClearForm}
+                            isLoadingRecipes={state.isLoadingRecipes} isSaving={state.isSaving}
+                            currentRecipeId={state.currentRecipeId} clearFeedback={clearFeedback}
                             isInTemplateMode={state.isInTemplateMode}
                         />
                         {isLoggedIn() && state.currentRecipeId && !state.isInTemplateMode && (
-                            <div className={styles.actionsGroup} style={{ marginTop: 'var(--spacing-lg)' }}> {/* Use theme variable */}
+                            <div className={styles.actionsGroup} style={{ marginTop: 'var(--spacing-lg)' }}>
                                 <button
                                     onClick={handleStartGuidedBake}
                                     disabled={isStartingBake || state.isSaving}
-                                    /* Apply global button classes and a specific one for accent if needed */
-                                    className="btn btn-primary buttonWithSpinner" /* Example: use .btn-primary or a new .btn-accent */
-                                    style={{ width: '100%', backgroundColor: 'var(--color-success)', color: 'var(--color-text-light)' }} // Prominent style
+                                    className="btn btn-primary buttonWithSpinner"
+                                    style={{ width: '100%', backgroundColor: 'var(--color-success)', color: 'var(--color-text-light)' }}
                                 >
                                     {isStartingBake ? 'Starting Bake...' : 'Start Guided Bake'}
-                                    {isStartingBake && <span className="buttonSpinner"></span>} {/* Global spinner */}
+                                    {isStartingBake && <span className="buttonSpinner"></span>}
                                 </button>
                             </div>
                         )}
                     </div>
                 </div>
                 <StepsColumn
-                    recipeSteps={state.steps}
-                    predefinedSteps={predefinedSteps || []}
-                    onStepChange={handleStepChange}
-                    onDeleteStep={handleDeleteStep}
-                    onAddStep={handleAddStep}
-                    onDragEnd={handleDragEnd}
-                    isLoadingPredefinedSteps={isLoadingPredefinedSteps}
-                    isSaving={state.isSaving}
-                    bulkFermentStepId={bulkFermentStepIdDynamic}
-                    levainStepId={levainStepIdDynamic}
-                    getStepDnDId={getStepDnDId}
+                    recipeSteps={state.steps} predefinedSteps={predefinedSteps || []}
+                    onStepChange={handleStepChange} onDeleteStep={handleDeleteStep} onAddStep={handleAddStep}
+                    onDragEnd={handleDragEnd} isLoadingPredefinedSteps={isLoadingPredefinedSteps}
+                    isSaving={state.isSaving} bulkFermentStepId={bulkFermentStepIdDynamic}
+                    levainStepId={levainStepIdDynamic} getStepDnDId={getStepDnDId}
                     isInTemplateMode={state.isInTemplateMode}
                 />
             </div>

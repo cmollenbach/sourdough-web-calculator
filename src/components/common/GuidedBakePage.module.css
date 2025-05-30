@@ -48,6 +48,7 @@
     margin-top: var(--spacing-md);
 }
 
+/* Bake Status Display */
 .bakeStatusDisplay {
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--border-radius-small);
@@ -86,15 +87,16 @@
   border-color: var(--color-border, #D7CCC8);
 }
 
+/* Timer Section */
 .timerDisplay {
-  font-size: 2.5em;
+  font-size: 2.5em; /* Make timer prominent */
   font-weight: var(--font-weight-bold);
   color: var(--color-primary-darker);
   text-align: center;
   margin: var(--spacing-sm) 0 var(--spacing-md) 0;
   padding: var(--spacing-sm);
   border-radius: var(--border-radius-small);
-  background-color: transparent;
+  background-color: transparent; /* Default, pulse will override */
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -119,12 +121,13 @@
     box-shadow: none;
   }
   50% {
-    background-color: var(--color-accent, #FFAB40);
-    color: var(--color-text-light);
-    box-shadow: 0 0 12px rgba(var(--color-accent-rgb, 255, 171, 64), 0.5);
+    background-color: var(--color-accent, #FFAB40); /* Using your accent color */
+    color: var(--color-text-light); /* Ensure text is readable on accent */
+    box-shadow: 0 0 12px rgba(var(--color-accent-rgb, 255, 171, 64), 0.5); /* Define --color-accent-rgb if needed */
   }
 }
 
+/* Stretch & Fold Timer Specifics */
 .sfTimerContainer {
   margin-top: var(--spacing-lg);
   padding: var(--spacing-md);
@@ -142,11 +145,13 @@
   font-weight: var(--font-weight-bold);
   color: var(--color-primary);
 }
-.sfTimerAlert {
+.sfTimerAlert { /* For "Time for fold!" message */
   color: var(--color-accent);
   font-weight: var(--font-weight-bold);
 }
 
+
+/* Notes Section */
 .notesTextArea {
   width: 100%;
   padding: var(--spacing-md);
@@ -157,7 +162,7 @@
   color: var(--color-text);
   background-color: var(--color-surface);
   min-height: 80px;
-  box-sizing: border-box;
+  box-sizing: border-box; /* Ensure padding doesn't expand width */
 }
 .notesTextArea:focus {
   outline: none;
@@ -165,35 +170,37 @@
   box-shadow: var(--box-shadow-focus);
 }
 
+/* Next Step Preview */
 .nextStepPreview {
   margin-top: var(--spacing-md);
   color: var(--color-text-muted);
   font-style: italic;
   font-size: var(--font-size-small);
   padding: var(--spacing-sm);
-  background-color: var(--color-background);
+  background-color: var(--color-background); /* Slightly different background */
   border-radius: var(--border-radius-small);
 }
 
+/* Actions Section */
 .actionsSection {
   margin-top: var(--spacing-xl);
   padding-top: var(--spacing-lg);
   border-top: 1px solid var(--color-border-light);
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
   gap: var(--spacing-md);
-  justify-content: center;
+  justify-content: center; /* Center buttons if they wrap */
 }
 
 .actionsSection button {
+  /* Buttons will use global .btn styles from App.css */
+  /* Add any specific layout adjustments for buttons within this section if needed */
+  /* For example, to make them take more space on smaller screens: */
   flex-grow: 1;
-  min-width: 180px;
+  min-width: 180px; /* Ensure buttons have a decent minimum width */
 }
 
-.completeStepButton {
-  /* Apply global .btn and .btn-success (if you create one) or .btn-primary in JSX */
-  /* This class can add further specific tweaks if .btn-success isn't enough */
-}
+/* .completeStepButton rule was here and is now removed */
 
 /* Loading and Error States within the page */
 /* These will use global .feedback-message-* from App.css */

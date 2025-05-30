@@ -60,26 +60,30 @@
   font-weight: 500; /* Or var(--font-weight-bold) if preferred */
 }
 
-/* Info Button for terms */
 .infoButton {
-    margin-left: var(--spacing-xs);
-    background: none;
-    border: none;
-    color: var(--color-primary);
-    cursor: pointer;
-    padding: 0;
-    font-size: 0.9em;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.5em;
-    height: 1.5em;
-    border-radius: 50%;
+  margin-left: var(--spacing-xs); /* Reduced margin slightly */
+  background: none;
+  border: none;
+  color: var(--color-text-muted); /* Changed to a more muted color */
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.8em; /* Reduced font size for the icon itself */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.3em;  /* Reduced width */
+  height: 1.3em; /* Reduced height */
+  border-radius: 50%;
+  opacity: 0.7; /* Make it slightly less prominent by default */
+  transition: opacity 0.2s ease-in-out, background-color 0.2s ease-in-out;
 }
+
 .infoButton:hover,
 .infoButton:focus {
-    background-color: rgba(var(--color-primary-rgb), 0.1);
-    outline: none;
+  /* Lighter background on hover/focus to match its subtlety */
+  background-color: rgba(var(--color-primary-rgb), 0.05); /* Very subtle primary tint */
+  opacity: 1; /* Full opacity on hover/focus */
+  outline: none;
 }
 
 /* Feedback messages will now use global classes: .feedback-message, .feedback-message-error, etc. from App.css */
@@ -232,15 +236,20 @@
 }
 
 .stepHeader h4 {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    font-size: 1.05rem; /* Slightly smaller than section h3 */
-    flex-grow: 1;
-    color: var(--color-text); /* Standard text color for step headers */
-    border-bottom: none; /* Remove potential double border if h4 inherits global h_ styles */
-    padding-bottom: 0;
+  margin: 0;
+  display: flex;
+  align-items: baseline; /* Changed from center to baseline for better alignment with mixed font sizes and select */
+  gap: var(--spacing-xs); /* Potentially reduce gap if needed */
+  font-size: 1.05rem; /* This is for the step name/select part */
+  flex-grow: 1;
+}
+
+/* Add this new class */
+.stepOrderText {
+  font-size: var(--font-size-small, 0.9rem); /* Make step number smaller */
+  font-weight: var(--font-weight-normal);   /* Make it less bold if h4 is bold */
+  color: var(--color-text-muted);           /* Mute the color slightly */
+  margin-right: var(--spacing-xs);          /* Add a little space after the colon */
 }
 
 .stepTypeSelect {

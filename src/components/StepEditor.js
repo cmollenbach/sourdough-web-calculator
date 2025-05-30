@@ -111,7 +111,7 @@ function StepEditor({
                     ☰
                 </div>
                 <h4>
-                    Step {step.step_order || index + 1}:
+                     <span className={styles.stepOrderText}>Step {step.step_order || index + 1}:</span>
                     {predefinedSteps && predefinedSteps.length > 0 && !isInTemplateMode ? (
                         <select
                             value={step.step_id || ''}

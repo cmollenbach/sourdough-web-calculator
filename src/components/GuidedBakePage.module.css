@@ -2,7 +2,7 @@
 
 .guidedBakePageContainer {
   padding: var(--spacing-lg);
-  max-width: 800px; /* Example max-width for focused content */
+  max-width: 800px;
   margin: var(--spacing-lg) auto;
   background-color: var(--color-surface);
   border-radius: var(--border-radius-medium);
@@ -11,79 +11,144 @@
 }
 
 .pageHeader {
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg); /* Reduced from --spacing-xl */
   padding-bottom: var(--spacing-md);
   border-bottom: var(--border-default);
 }
-.pageHeader h1 { /* Inherits from App.css, override if needed */
+.pageHeader h1 {
   margin-top: 0;
   margin-bottom: var(--spacing-xs);
 }
-.pageHeader p { /* For bake status etc. */
+.pageHeader p {
   font-size: var(--font-size-small);
   color: var(--color-text-muted);
   margin-bottom: 0;
 }
 
+/* Prominent Bake Status Display - Styles from previous suggestion */
+.bakeStatusDisplay {
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-small);
+  font-weight: var(--font-weight-bold);
+  text-align: center;
+  margin: var(--spacing-md) auto; /* Centered and with margin */
+  border: 1px solid transparent;
+  font-size: var(--font-size-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  max-width: max-content; /* Fit to content */
+}
+
+.bakeStatusDisplay.active {
+  background-color: var(--color-success-light, rgba(46, 125, 50, 0.1));
+  color: var(--color-success, #2E7D32);
+  border-color: var(--color-success, #2E7D32);
+}
+
+.bakeStatusDisplay.paused {
+  background-color: var(--color-warning-light, rgba(255, 160, 0, 0.1));
+  color: var(--color-warning, #FFA000);
+  border-color: var(--color-warning, #FFA000);
+}
+
+.bakeStatusDisplay.completed {
+  background-color: var(--color-info-light, rgba(25, 118, 210, 0.1));
+  color: var(--color-info, #1976D2);
+  border-color: var(--color-info, #1976D2);
+}
+
+.bakeStatusDisplay.abandoned {
+  background-color: var(--color-secondary, #F5F5F5);
+  color: var(--color-text-muted, #796A5B);
+  border-color: var(--color-border, #D7CCC8);
+}
+
+
 .currentStepSection {
-  margin-bottom: var(--spacing-xl);
-  padding: var(--spacing-lg);
-  background-color: rgba(var(--color-primary-rgb), 0.05); /* Subtle highlight */
+  margin-bottom: var(--spacing-lg); /* Reduced */
+  padding: var(--spacing-md); /* Reduced */
+  background-color: rgba(var(--color-primary-rgb), 0.05);
   border-radius: var(--border-radius-small);
   border: 1px solid rgba(var(--color-primary-rgb), 0.1);
 }
 .currentStepSection h2 {
   margin-top: 0;
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm); /* Reduced */
   color: var(--color-primary-darker);
+  font-size: 1.2rem; /* Slightly smaller for step title */
 }
 .currentStepSection p {
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs); /* Reduced */
 }
 .currentStepSection .instructions {
-    font-size: 1.05rem; /* Slightly larger for readability */
-    line-height: 1.7;
+    font-size: 1rem; /* Adjusted */
+    line-height: 1.6; /* Adjusted */
 }
-.currentStepSection .details { /* For duration, temp etc. */
+.currentStepSection .details {
     font-size: var(--font-size-small);
     color: var(--color-text-muted);
 }
 .stepTimestamp {
     font-size: 0.8rem;
     color: var(--color-text-muted);
-    margin-top: var(--spacing-md);
+    margin-top: var(--spacing-sm); /* Reduced */
 }
 
 
 .timerSection {
-  margin: var(--spacing-xl) 0;
-  padding: var(--spacing-lg);
+  margin: var(--spacing-lg) 0; /* Reduced vertical margin */
+  padding: var(--spacing-md);    /* Reduced padding */
   border: var(--border-default);
   border-radius: var(--border-radius-medium);
   text-align: center;
 }
 .timerSection h3 {
   margin-top: 0;
-  margin-bottom: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs); /* Reduced */
   color: var(--color-text);
+  font-size: 1.1rem; /* Smaller heading for timers */
+  font-family: var(--font-family-body); /* Match body font if headings are too heavy */
+  font-weight: var(--font-weight-bold);
 }
 .timerDisplay {
-  font-size: 2.5em; /* Large timer display */
+  font-size: 2em;   /* Reduced from 2.5em */
   font-weight: var(--font-weight-bold);
   color: var(--color-primary-darker);
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm); /* Reduced */
+  padding: var(--spacing-xs) 0; /* Reduced padding, especially vertical */
 }
-.timerDisplay.active { color: var(--color-success); }
-.timerDisplay.paused { color: var(--color-accent); }
+.timerDisplay.activeTimer { color: var(--color-success); } /* Renamed from .active for clarity */
+.timerDisplay.pausedTimer { color: var(--color-warning); } /* Renamed from .paused for clarity */
+.timerDisplay.finishedTimer { color: var(--color-text-muted); }
+
+
+.timerCompletedEffect {
+  animation: pulseHighlightGuidedBake 0.8s ease-out; /* Renamed animation to be specific */
+}
+
+@keyframes pulseHighlightGuidedBake { /* Renamed animation */
+  0%, 100% {
+    background-color: transparent;
+    box-shadow: none;
+  }
+  50% {
+    background-color: var(--color-accent, #FFAB40);
+    color: var(--color-text-light); /* Ensure text is readable */
+    box-shadow: 0 0 10px rgba(var(--color-accent-rgb, 255, 171, 64), 0.4);
+  }
+}
+
 
 .notesSection {
-  margin: var(--spacing-xl) 0;
+  margin: var(--spacing-lg) 0; /* Reduced */
 }
-.notesSection label { /* Uses global label style from App.css */
-  margin-bottom: var(--spacing-sm);
+.notesSection label {
+  margin-bottom: var(--spacing-xs); /* Reduced */
 }
-.notesSection textarea { /* Uses global textarea style from App.css */
-  min-height: 80px;
+.notesSection textarea {
+  min-height: 70px; /* Slightly reduced */
 }
 
 .nextStepPreview {
@@ -91,26 +156,27 @@
   color: var(--color-text-muted);
   font-style: italic;
   font-size: var(--font-size-small);
-  padding-left: var(--spacing-lg); /* Indent slightly */
-  border-left: 3px solid var(--color-border);
+  padding: var(--spacing-sm); /* Added some padding */
+  background-color: var(--color-background);
+  border-left: 3px solid var(--color-border-light); /* Lighter border */
+  border-radius: var(--border-radius-small);
 }
 
 .actionsSection {
-  margin-top: var(--spacing-xl);
-  padding-top: var(--spacing-xl);
+  margin-top: var(--spacing-lg); /* Reduced */
+  padding-top: var(--spacing-lg); /* Reduced */
   border-top: var(--border-default);
   display: flex;
   gap: var(--spacing-md);
   flex-wrap: wrap;
-  justify-content: center; /* Center buttons if they don't fill width */
+  justify-content: center;
 }
-/* Buttons in actionsSection will use .btn and its variants from App.css */
 
-.bakeStatusMessage { /* For "Bake Complete!", "Bake Abandoned" messages */
-    padding: var(--spacing-xl);
+.bakeStatusMessage {
+    padding: var(--spacing-lg); /* Reduced */
     text-align: center;
     border-radius: var(--border-radius-medium);
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md); /* Reduced */
 }
 .bakeStatusMessage.completed {
     background-color: rgba(var(--color-success-rgb), 0.1);
@@ -124,39 +190,60 @@
 }
 .bakeStatusMessage h2 { margin-top: 0; }
 
-/* src/components/GuidedBakePage.module.css */
-
-/* ... (your existing styles for .guidedBakePageContainer, .pageHeader, .currentStepSection, .timerSection, etc.) ... */
 
 .sAndFTimerSection {
-  margin-top: var(--spacing-lg);
-  padding: var(--spacing-md);
-  border: 1px dashed var(--color-primary-lighter); /* Dashed border to differentiate */
+  margin-top: var(--spacing-md); /* Reduced */
+  padding: var(--spacing-sm); /* Reduced */
+  border: 1px dashed var(--color-primary-lighter);
   border-radius: var(--border-radius-medium);
-  background-color: rgba(var(--color-primary-rgb), 0.03); /* Very subtle background */
+  background-color: rgba(var(--color-primary-rgb), 0.03);
   text-align: center;
 }
 
-.sAndFTimerSection h3 {
+.sAndFTimerSection h3 { /* Already reasonably sized, matches .timerSection h3 now */
   margin-top: 0;
-  margin-bottom: var(--spacing-sm);
-  color: var(--color-primary-darker);
-  font-size: 1.1rem; /* Slightly smaller than main timer h3 if one exists */
-}
-
-.sAndFTimerSection p {
   margin-bottom: var(--spacing-xs);
+  color: var(--color-primary-darker);
+  font-size: 1.1rem;
+  font-family: var(--font-family-body);
+  font-weight: var(--font-weight-bold);
 }
 
-.sAndFAlert { /* Style for the feedback message specifically for S&F */
+.sAndFTimerSection p { /* General paragraphs in S&F section */
+  margin-bottom: var(--spacing-xs);
+  font-size: var(--font-size-small); /* Make info text smaller */
+}
+
+/* Specific class for the S&F countdown timer text */
+.sfTimerDisplay {
+    font-size: 1.6em; /* Reduced from 1.8em, ensure this class is used in JSX */
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+    margin: var(--spacing-xs) 0 var(--spacing-sm) 0; /* Adjusted margin */
+    padding: var(--spacing-xs) 0; /* Added some padding */
+}
+.sfTimerDisplay.activeTimer { color: var(--color-success); }
+.sfTimerDisplay.pausedTimer { color: var(--color-warning); }
+.sfTimerDisplay.finishedTimer { color: var(--color-text-muted); }
+
+
+.sAndFAlert {
+  /* This will use global .feedback-message and .feedback-message-info */
+  /* Add specific tweaks here if needed, like smaller font/padding for this context */
+  font-size: 0.85rem; /* Make it a bit smaller than standard feedback */
+  padding: var(--spacing-xs) var(--spacing-sm);
   margin-top: var(--spacing-sm);
-  /* It will use global .feedback-message .feedback-message-info for base styling */
 }
 
-/* Ensure .timerDisplay and other common classes are styled if needed here or globally */
-.timerDisplay.active { /* You might have this from main timer */
-  color: var(--color-success);
+/* Loading and Error Message Styling from previous turn, ensuring they use global classes */
+.loadingMessage {
+  /* Apply in JSX: className={`feedback-message feedback-message-info ${styles.loadingMessage}`} */
+  padding: var(--spacing-xl); /* Or keep specific if different from global */
+  font-size: var(--font-size-base);
 }
-.timerDisplay.paused { /* You might have this from main timer */
-  color: var(--color-accent);
+
+.errorMessage {
+  /* Apply in JSX: className={`feedback-message feedback-message-error ${styles.errorMessage}`} */
+  padding: var(--spacing-xl);
+  font-size: var(--font-size-base);
 }
