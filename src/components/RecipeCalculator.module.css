@@ -351,39 +351,134 @@
   background-color: var(--color-secondary);
 }
 
+/* In RecipeCalculator.module.css */
+.resultsSection {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border-light);
+}
+.resultsSection h4 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-sm);
+  font-size: 1.1rem; /* Slightly smaller than section h3 */
+  color: var(--color-primary);
+}
+.prefermentDetail {
+  margin-bottom: var(--spacing-md);
+  padding-left: var(--spacing-md);
+  border-left: 2px solid var(--color-primary-lighter);
+}
+.prefermentDetail h5 {
+    font-size: 1rem;
+    margin-bottom: var(--spacing-xs);
+}
+.resultItemSub {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--spacing-xs) 0 var(--spacing-xs) var(--spacing-lg); /* Indent sub-items */
+  font-size: 0.95rem;
+}
+.flourBreakdownList {
+  list-style-type: disc;
+  margin-left: var(--spacing-xl); /* Further indent */
+  padding-left: var(--spacing-sm);
+  font-size: 0.9rem;
+}
+.flourBreakdownList li {
+    margin-bottom: var(--spacing-xs);
+}
+.calculationErrors {
+    background-color: rgba(var(--color-error-rgb), 0.05);
+    border: 1px solid rgba(var(--color-error-rgb), 0.2);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius-small);
+    margin-bottom: var(--spacing-lg);
+}
+.calculationErrors h4 {
+    color: var(--color-error);
+    margin-top: 0;
+}
+.calculationErrors ul {
+    color: var(--color-error);
+    padding-left: var(--spacing-lg);
+    margin-bottom: 0;
+}
 .dragHandle:active {
   cursor: grabbing;
   background-color: var(--color-border-light);
 }
+
+.stageIngredientsSection {
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--color-border-light);
+}
+
+.stageIngredientsSection h5 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-md);
+  font-size: 1.05rem; /* Or var(--font-size-medium) if defined */
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs) /* For spacing between title and info button */
+}
+
+.stageIngredientItem {
+  margin-bottom: var(--spacing-sm);
+}
+
+.ingredientRow {
+  display: grid;
+  grid-template-columns: 1fr auto auto; /* Ingredient select | Percentage input | Remove button */
+  gap: var(--spacing-sm);
+  align-items: center;
+}
+
+.ingredientSelect {
+  /* You might have global select styles in App.css. Add specific overrides here if needed. */
+  /* Example: */
+  padding: var(--spacing-sm);
+  border: var(--border-default);
+  border-radius: var(--border-radius-small);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.95rem;
+  /* flex-grow: 1; */ /* If you want it to take available space in the grid column */
+}
+
+.percentageInput {
+  /* You might have global input[type=number] styles. Add specific overrides here if needed. */
+  /* Example: */
+  padding: var(--spacing-sm);
+  border: var(--border-default);
+  border-radius: var(--border-radius-small);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.95rem;
+  max-width: 70px; /* Adjust as needed */
+  text-align: right;
+}
+/* (End of new styles for Stage Ingredients section) */
+
+
 /* Responsive adjustments (largely the same, ensure variables are used) */
-@media (max-width: 1000px) {
-    .recipeCalculatorLayout { flex-direction: column; gap: var(--spacing-lg); }
-    .recipeDetailsColumn, .stepsColumn { min-width: 100%; flex-basis: auto; }
-}
-@media (max-width: 900px) {
-    .templateCardsContainer { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
-}
+/* ... (rest of your existing media queries and styles) ... */
+
 @media (max-width: 600px) {
-    .recipeCalculatorLayout { padding: var(--spacing-md); }
-    .inputsSection .inputGroup.twoColumn,
-    .manageRecipesSection .inputGroup.twoColumn,
-    .stepItemEditor .inputGroup.twoColumn {
-        grid-template-columns: 1fr;
+    /* ... existing responsive rules ... */
+
+    .ingredientRow { /* Make stage ingredient inputs stack on small screens */
+        grid-template-columns: 1fr; /* Stack them */
     }
-    .inputsSection .inputGroup.twoColumn label,
-    .manageRecipesSection .inputGroup.twoColumn label,
-    .stepItemEditor .inputGroup.twoColumn label {
-        text-align: left;
-        margin-bottom: var(--spacing-xs);
-        padding-right: 0;
-        white-space: normal;
+    .ingredientSelect,
+    .percentageInput {
+        max-width: none; /* Allow them to take full width of their column */
+        width: 100%;
+        text-align: left; /* Adjust text align if needed when stacked */
     }
-    .stepItemEditor .inputGroup.twoColumn input[type="number"] {
-        max-width: none; width: 100%; margin-left: 0;
+    .ingredientRow button.btn-icon { /* Style for the remove button if needed */
+        justify-self: flex-end; /* Example: align remove button to the right if stacked */
+        margin-top: var(--spacing-xs);
     }
-    .inputsSection .inputGroup.twoColumn input[type="number"] { /* Ensure this allows full width too on mobile */
-        max-width: none; width: 100%; margin-left: 0;
-    }
-    .stepHeader h4 { flex-direction: column; align-items: flex-start; font-size: 1rem; }
-    .stepTypeSelect { width: 100%; max-width: none; margin-top: var(--spacing-sm); }
 }

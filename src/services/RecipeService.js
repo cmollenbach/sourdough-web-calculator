@@ -15,31 +15,38 @@ export class AuthError extends Error {
 const RecipeService = {
     async getPredefinedSteps() {
         const authHeader = AuthService.getAuthHeader();
-        // Note: If this endpoint becomes authenticated and can return 401/403 for token issues,
-        // the error handling below should be adjusted like other authenticated methods.
-        // For now, assuming it might be public or have different error types.
         const response = await fetch(`${API_BASE_URL}/api/recipes/steps`, {
-            headers: authHeader, // Add if/when this route is protected
+            headers: authHeader,
         });
         if (!response.ok) {
             const errData = await response.json().catch(() => ({ message: `HTTP error! Status: ${response.status}. Failed to parse error JSON.` }));
-            // Example if it becomes protected:
-            // if ((response.status === 401 || response.status === 403) && AuthService.isLoggedIn()) {
-            //     throw new AuthError(errData.message || "Authentication required for predefined steps. Please log in again.", response.status);
-            // }
             throw new Error(errData.message || `HTTP error fetching predefined step types! status: ${response.status}`);
+        }
+        return response.json();
+    },
+
+    // NEW METHOD to fetch available ingredients
+    async getAvailableIngredients() {
+        console.log("RecipeService: getAvailableIngredients called"); // For debugging
+        const authHeader = AuthService.getAuthHeader(); // Assuming it might be protected
+        const response = await fetch(`${API_BASE_URL}/api/ingredients`, {
+            headers: authHeader,
+        });
+        if (!response.ok) {
+            const errData = await response.json().catch(() => ({ message: `HTTP error! Status: ${response.status}. Failed to parse error JSON.` }));
+            if ((response.status === 401 || response.status === 403) && AuthService.isLoggedIn()) {
+                throw new AuthError(errData.message || "Authentication required for ingredients. Please log in again.", response.status);
+            }
+            throw new Error(errData.message || `HTTP error fetching available ingredients! status: ${response.status}`);
         }
         return response.json();
     },
 
     async getUserRecipes() {
         const authHeader = AuthService.getAuthHeader();
-        // Early exit if no auth header is available but user is supposed to be logged in
-        // This is a client-side check; backend will ultimately decide with 401/403
         if (!Object.keys(authHeader).length && AuthService.isLoggedIn()) {
             throw new AuthError("User session error. Please log in again.", 401);
         }
-
         const response = await fetch(`${API_BASE_URL}/api/recipes`, {
             headers: authHeader,
         });
@@ -74,7 +81,7 @@ const RecipeService = {
     },
 
     async saveRecipe(recipeData) {
-        if (!AuthService.isLoggedIn()) { // This check is good
+        if (!AuthService.isLoggedIn()) {
             throw new AuthError("User not logged in. Cannot save recipe.", 401);
         }
         const response = await fetch(`${API_BASE_URL}/api/recipes`, {
@@ -112,7 +119,6 @@ const RecipeService = {
     },
 
     async getBaseRecipeTemplates() {
-        // Assuming this remains a public endpoint, no auth header or AuthError for 401 needed here
         const response = await fetch(`${API_BASE_URL}/api/recipes/templates`);
         if (!response.ok) {
             const errData = await response.json().catch(() => ({}));
@@ -129,8 +135,6 @@ const RecipeService = {
             method: 'DELETE',
             headers: AuthService.getAuthHeader(),
         });
-        // For DELETE, response might not have JSON body on success, or even on error sometimes.
-        // Prioritize status code.
         if (!response.ok) {
             const result = await response.json().catch(() => ({ message: `Failed to delete recipe. Status: ${response.status}` }));
             if (response.status === 401 || response.status === 403) {
@@ -138,12 +142,10 @@ const RecipeService = {
             }
             throw new Error(result?.message || `HTTP error deleting recipe ${recipeId}! status: ${response.status}`);
         }
-        // Attempt to parse JSON for success message if backend provides it, otherwise return a standard success object.
         return response.json().catch(() => ({ success: true, message: 'Recipe deleted successfully.' }));
     },
 
     // --- GUIDED BAKING METHODS ---
-
     async startBake(recipeId) { 
         if (!AuthService.isLoggedIn()) {
             throw new AuthError("User not logged in. Cannot start bake.", 401);
@@ -203,9 +205,6 @@ const RecipeService = {
 
     async getActiveBakes() {
         if (!AuthService.isLoggedIn()) {
-            // This might be called by a context before UI fully prevents it;
-            // returning empty or throwing AuthError are options.
-            // For consistency with user experience, throwing AuthError is better.
             throw new AuthError("User not logged in. Cannot fetch active bakes.", 401);
         }
         const response = await fetch(`${API_BASE_URL}/api/bakes/active`, {

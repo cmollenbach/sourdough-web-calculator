@@ -4,6 +4,7 @@ import styles from './RecipeCalculator.module.css';
 
 // Helper function to generate GenAI prompts (remains the same)
 const getGenAiPrompt = (termKey, stepName = '') => {
+    // ... (your existing getGenAiPrompt function)
     switch (termKey) {
         case 'step_name_levain_build':
             return `Explain what a "Levain Build" is in the context of sourdough baking, including its purpose, typical process, and common ingredients.`;
@@ -35,6 +36,7 @@ const getGenAiPrompt = (termKey, stepName = '') => {
     }
 };
 
+
 function StepEditor({
     step,
     index,
@@ -45,7 +47,7 @@ function StepEditor({
     isInTemplateMode,
     bulkFermentStepId,
     levainStepId,
-    dndListeners 
+    dndListeners
 }) {
     const isBulkFermentSFStep = step.step_id === bulkFermentStepId;
     const isLevainStep = step.step_id === levainStepId;
@@ -71,9 +73,9 @@ function StepEditor({
     const renderInfoButton = (termKey, termDisplayName) => (
         <button
             type="button"
-            onMouseDown={(e) => e.stopPropagation()} 
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => {
-                e.stopPropagation(); 
+                e.stopPropagation();
                 handleInfoClickInternal(termKey, termDisplayName);
             }}
             title={`Get AI explanation for ${termDisplayName || termKey.replace(/_/g, ' ')}`}
@@ -97,21 +99,25 @@ function StepEditor({
         return name;
     };
 
+    // Construct a unique ID for the select element
+    const selectId = `step-type-select-${index}`;
+
     return (
         <div className={styles.stepItemEditor}>
             <div className={styles.stepHeader}>
                 <div
-                    {...(dndListeners || {})} 
+                    {...(dndListeners || {})}
                     className={styles.dragHandle}
-                    style={{ cursor: dndListeners ? 'grab' : 'default', padding: '0 8px', marginRight: '8px', touchAction: 'none' }} 
+                    style={{ cursor: dndListeners ? 'grab' : 'default', padding: '0 8px', marginRight: '8px', touchAction: 'none' }}
                     title="Drag to reorder step"
                 >
                     ☰
                 </div>
                 <h4>
-                    {/* The "Step X:" span has been removed */}
                     {predefinedSteps && predefinedSteps.length > 0 && !isInTemplateMode ? (
                         <select
+                            id={selectId} // <-- ADDED ID HERE
+                            name={selectId} // <-- ADDED NAME HERE (good practice)
                             value={step.step_id || ''}
                             onMouseDown={(e) => e.stopPropagation()}
                             onClick={(e) => e.stopPropagation()}
@@ -138,7 +144,7 @@ function StepEditor({
                     <button
                         type="button"
                         className="btn btn-danger btn-small"
-                        onMouseDown={(e) => e.stopPropagation()} 
+                        onMouseDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                             e.stopPropagation();
                             console.log(`StepEditor Remove button clicked for index: ${index}, step_order: ${step.step_order}, step_name: "${step.step_name}"`);
@@ -155,6 +161,7 @@ function StepEditor({
                 )}
             </div>
 
+            {/* ... (rest of your component) ... */}
             {isBulkFermentSFStep ? (
                 <>
                     <div className={`${styles.inputGroup} ${styles.twoColumn}`}>

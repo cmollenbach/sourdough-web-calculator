@@ -1,9 +1,9 @@
 // src/utils/recipeUtils.js
 
 /**
- * Processes an array of recipe steps, enriching them with names from predefined steps
- * and ensuring numeric fields are correctly typed. It also assigns temporary client-side IDs
- * for new steps that don't yet have a database ID.
+ * Processes an array of recipe steps, enriching them with names from predefined steps,
+ * ensuring numeric fields are correctly typed, initializing stageIngredients array,
+ * and assigning temporary client-side IDs.
  *
  * @param {Array<Object>} rawSteps - The array of step objects to process.
  * @param {Array<Object>} predefinedSteps - An array of predefined step definitions from the backend.
@@ -14,148 +14,288 @@ export function processRecipeSteps(rawSteps, predefinedSteps = []) {
         const predefined = predefinedSteps.find(ps => ps.step_id === step.step_id);
         return {
             ...step,
-            // Ensure step_name is populated, falling back to a generic name if not found
             step_name: step.step_name || (predefined ? predefined.step_name : `Unknown Step ID ${step.step_id}`),
-            // Convert numeric fields from strings (if they come from form inputs) or ensure they are numbers
+            step_type: step.step_type || (predefined ? predefined.step_type : 'Unknown'), // Ensure step_type is present
             duration_override: step.duration_override != null ? Number(step.duration_override) : null,
-            target_temperature_celsius: step.target_temperature_celsius != null ? Number(step.target_temperature_celsius) : null,
-            contribution_pct: step.contribution_pct != null ? Number(step.contribution_pct) : null,
-            target_hydration: step.target_hydration != null ? Number(step.target_hydration) : null,
+            target_temperature_celsius: step.target_temperature_celsius != null ? parseFloat(step.target_temperature_celsius) : null,
+            contribution_pct: step.contribution_pct != null ? parseFloat(step.contribution_pct) : null, // Store as 20 for 20%
+            target_hydration: step.target_hydration != null ? parseFloat(step.target_hydration) : null, // Store as 100 for 100%
             stretch_fold_interval_minutes: step.stretch_fold_interval_minutes != null ? Number(step.stretch_fold_interval_minutes) : null,
-            // Assign a temporary client-side ID if the step is new (doesn't have recipe_step_id)
-            // and doesn't already have a temp_client_id. This is crucial for React keys and DnD.
+            stageIngredients: Array.isArray(step.stageIngredients)
+                ? step.stageIngredients.map(ing => ({
+                    ...ing,
+                    ingredient_id: Number(ing.ingredient_id),
+                    percentage: ing.percentage != null ? parseFloat(ing.percentage) : null, // Store as 100 for 100%
+                    is_wet: typeof ing.is_wet === 'boolean' ? ing.is_wet : false,
+                    // calculated_weight will be filled by the main calculation logic
+                }))
+                : [],
             temp_client_id: step.recipe_step_id ? null : (step.temp_client_id || Date.now() + index + Math.random()),
         };
     });
 }
 
 /**
- * Calculates the ingredient weights for a sourdough recipe based on target dough weight,
- * hydration, salt percentage, and levain characteristics.
- *
- * @param {string|number} targetDoughWeight - The desired total weight of the dough.
- * @param {string|number} hydrationPercentage - The overall hydration percentage of the dough.
- * @param {string|number} saltPercentage - The salt percentage, based on total flour.
- * @param {Array<Object>} steps - The array of recipe steps, used to find the levain step.
- * @param {string|number|null} levainStepId - The ID of the step type that represents the levain build.
- * @returns {Object} An object containing the calculated weights for flour, water, starter, salt, and total.
+ * Calculates ingredient weights for a sourdough recipe with multiple preferments and flour types per stage.
+ * All percentages are expected as whole numbers (e.g., 75 for 75%, 2.0 for 2.0%).
  */
-export function calculateRecipe(targetDoughWeight, hydrationPercentage, saltPercentage, steps = [], levainStepId) {
-    // --- Input Validation and Parsing ---
-    const targetDoughWeightNum = parseFloat(targetDoughWeight);
-    const hydrationPercentageNum = parseFloat(hydrationPercentage) / 100.0;
-    const saltPercentageNum = parseFloat(saltPercentage) / 100.0;
+export function calculateRecipe(
+    overallTargetDoughWeight, // number
+    overallHydrationPercentage, // number, e.g., 75
+    overallSaltPercentage,    // number, e.g., 2.0
+    steps = [],               // Array of RecipeStep objects from state
+    availableIngredients = [],// [{ ingredient_id, ingredient_name, is_wet (boolean) }]
+    stepTypeIds = {}          // { levainBuild: ID, mixFinalDough: ID, poolishBuild: ID, etc. }
+) {
+    const targetDoughWeightNum = parseFloat(overallTargetDoughWeight);
+    // Percentages from overall recipe settings are for the FINAL DOUGH
+    const overallHydrationNum = parseFloat(overallHydrationPercentage) / 100.0; // Convert to 0.xx for calculation
+    const overallSaltNum = parseFloat(overallSaltPercentage) / 100.0;      // Convert to 0.xx for calculation
 
-    // Return zeroed results if target weight is invalid
-    if (isNaN(targetDoughWeightNum) || targetDoughWeightNum <= 0) {
-        return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: 0 };
+    const results = {
+        totalFlourInRecipe: 0,
+        totalWaterInRecipe: 0,
+        totalSaltInRecipe: 0,
+        prefermentsSummary: [], // [{ name, type, totalWeight, flourWeight, waterWeight, flourBreakdown: [{name, weight}] }]
+        mainDoughAdds: {
+            flours: [], // [{ ingredient_id, ingredient_name, weight }]
+            water: 0,
+            salt: 0,
+        },
+        grandTotalWeight: 0,
+        bakerPercentages: {
+            hydration: parseFloat(overallHydrationPercentage),
+            salt: parseFloat(overallSaltPercentage),
+            prefermentedFlour: 0,
+        },
+        errors: [], // To capture any calculation issues
+    };
+
+    if (isNaN(targetDoughWeightNum) || targetDoughWeightNum <= 0 ||
+        isNaN(overallHydrationNum) || overallHydrationNum < 0 ||
+        isNaN(overallSaltNum) || overallSaltNum < 0) {
+        results.errors.push("Invalid overall recipe parameters (Target Weight, Hydration, or Salt).");
+        return results;
     }
 
-    // Find the levain step, if provided and valid
-    const levainStep = steps.find(step =>
-        step.step_id === levainStepId &&
-        step.contribution_pct != null &&
-        step.target_hydration != null
-    );
-
-    const starterPercentageNum = levainStep ? parseFloat(levainStep.contribution_pct) / 100.0 : 0;
-    const starterHydrationNum = levainStep ? parseFloat(levainStep.target_hydration) / 100.0 : 0;
-
-    // Validate essential percentages
-    if (isNaN(hydrationPercentageNum) || isNaN(saltPercentageNum)) {
-        return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: 0 };
+    // 1. Estimate Total Flour in the entire Recipe
+    let totalFlourInRecipe = targetDoughWeightNum / (1 + overallHydrationNum + overallSaltNum);
+    if (totalFlourInRecipe <= 0 || !isFinite(totalFlourInRecipe)) {
+        results.errors.push("Could not determine a valid total flour amount from overall parameters.");
+        totalFlourInRecipe = 0;
+        results.totalFlourInRecipe = 0;
+        results.totalWaterInRecipe = 0;
+        results.totalSaltInRecipe = 0;
+        results.grandTotalWeight = 0;
+        return results;
     }
-    // Validate starter hydration if starter is used
-    if (starterPercentageNum > 0 && (isNaN(starterHydrationNum) || (1 + starterHydrationNum) === 0)) {
-         return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: 0 };
+    results.totalFlourInRecipe = totalFlourInRecipe;
+    results.totalWaterInRecipe = totalFlourInRecipe * overallHydrationNum;
+    results.totalSaltInRecipe = totalFlourInRecipe * overallSaltNum;
+
+    let accumulatedFlourFromPreferments = 0;
+    let accumulatedWaterFromPreferments = 0;
+    let totalPrefermentedFlourPercentOfRecipe = 0;
+
+    // 2. Calculate Preferments
+    steps.forEach(step => {
+        const isPreferment = step.step_type === 'Levain' || step.step_type === 'Preferment' ||
+                           (stepTypeIds.levainBuild && Number(step.step_id) === stepTypeIds.levainBuild) ||
+                           (stepTypeIds.poolishBuild && Number(step.step_id) === stepTypeIds.poolishBuild) ||
+                           (stepTypeIds.bigaBuild && Number(step.step_id) === stepTypeIds.bigaBuild);
+
+        if (!isPreferment || !step.contribution_pct || !step.target_hydration) {
+            return;
+        }
+
+        const contributionPct = parseFloat(step.contribution_pct) / 100.0;
+        const prefermentTargetHydrationNum = parseFloat(step.target_hydration) / 100.0;
+
+        if (contributionPct <= 0) return;
+
+        totalPrefermentedFlourPercentOfRecipe += parseFloat(step.contribution_pct);
+
+        const prefermentFlourTarget = totalFlourInRecipe * contributionPct;
+        let prefermentWaterTarget = 0;
+        let currentPrefermentFlourTotalFromDef = 0;
+        const prefermentFlourBreakdown = [];
+
+        let sumOfFlourPercentagesInPreferment = 0;
+        (step.stageIngredients || []).forEach(ing => {
+            const ingInfo = availableIngredients.find(i => i.ingredient_id === Number(ing.ingredient_id));
+            if (ingInfo && !ingInfo.is_wet) {
+                sumOfFlourPercentagesInPreferment += (ing.percentage || 0);
+            }
+        });
+
+        if (sumOfFlourPercentagesInPreferment === 0 && prefermentFlourTarget > 0) {
+            results.errors.push(`Preferment step "${step.step_name}" has ${step.contribution_pct}% contribution but no flours defined or their percentages sum to zero.`);
+            return;
+        }
+        
+        (step.stageIngredients || []).forEach(ing => {
+            const ingInfo = availableIngredients.find(i => i.ingredient_id === Number(ing.ingredient_id));
+            if (!ingInfo) return;
+
+            if (!ingInfo.is_wet) { // Flour component
+                const ingPctOfPrefermentFlour = sumOfFlourPercentagesInPreferment > 0 ? ((ing.percentage || 0) / sumOfFlourPercentagesInPreferment) : 0;
+                const weight = prefermentFlourTarget * ingPctOfPrefermentFlour;
+                prefermentFlourBreakdown.push({ ingredient_id: ing.ingredient_id, name: ingInfo.ingredient_name, weight: weight });
+                currentPrefermentFlourTotalFromDef += weight;
+            }
+        });
+        
+        prefermentWaterTarget = currentPrefermentFlourTotalFromDef * prefermentTargetHydrationNum;
+        
+        accumulatedFlourFromPreferments += currentPrefermentFlourTotalFromDef;
+        accumulatedWaterFromPreferments += prefermentWaterTarget;
+
+        results.prefermentsSummary.push({
+            name: step.step_name,
+            type: step.step_type,
+            totalWeight: currentPrefermentFlourTotalFromDef + prefermentWaterTarget,
+            flourWeight: currentPrefermentFlourTotalFromDef,
+            waterWeight: prefermentWaterTarget,
+            flourBreakdown: prefermentFlourBreakdown,
+            contribution_pct_of_recipe_flour: step.contribution_pct,
+            internal_hydration_pct: step.target_hydration,
+        });
+    });
+    results.bakerPercentages.prefermentedFlour = totalPrefermentedFlourPercentOfRecipe;
+
+    // 3. Calculate Main Dough Additions
+    const flourNeededForMainDough = Math.max(0, results.totalFlourInRecipe - accumulatedFlourFromPreferments);
+    const waterNeededForMainDough = Math.max(0, results.totalWaterInRecipe - accumulatedWaterFromPreferments);
+    const saltForMainDough = results.totalSaltInRecipe; // This is already calculated based on total recipe flour
+
+    results.mainDoughAdds.water = waterNeededForMainDough;
+    results.mainDoughAdds.salt = saltForMainDough;
+
+    const mainDoughMixStep = steps.find(step => Number(step.step_id) === stepTypeIds.mixFinalDough || step.step_type === 'Mixing');
+
+    if (mainDoughMixStep && flourNeededForMainDough > 0) {
+        let sumOfFlourPercentagesInMainDough = 0;
+        const mainDoughFlourIngredients = (mainDoughMixStep.stageIngredients || []).filter(ing => {
+            const ingInfo = availableIngredients.find(i => i.ingredient_id === Number(ing.ingredient_id));
+            return ingInfo && !ingInfo.is_wet && ingInfo.ingredient_name?.toLowerCase() !== 'salt';
+        });
+
+        mainDoughFlourIngredients.forEach(ing => {
+            sumOfFlourPercentagesInMainDough += (ing.percentage || 0);
+        });
+        
+        if (sumOfFlourPercentagesInMainDough === 0 && mainDoughFlourIngredients.length > 0) {
+             results.errors.push(`Main dough mix step "${mainDoughMixStep.step_name}" has flours defined but their percentages sum to zero.`);
+        }
+
+
+        if (sumOfFlourPercentagesInMainDough > 0) {
+            mainDoughFlourIngredients.forEach(ing => {
+                const ingInfo = availableIngredients.find(i => i.ingredient_id === Number(ing.ingredient_id));
+                const ingPctOfMainDoughFlour = (ing.percentage || 0) / sumOfFlourPercentagesInMainDough;
+                const weight = flourNeededForMainDough * ingPctOfMainDoughFlour;
+                results.mainDoughAdds.flours.push({
+                    ingredient_id: ing.ingredient_id,
+                    ingredient_name: ingInfo.ingredient_name,
+                    weight: weight,
+                    percentageOfMainDoughFlour: ing.percentage,
+                });
+            });
+        } else if (flourNeededForMainDough > 0 && mainDoughFlourIngredients.length === 0) {
+            results.errors.push(`Flour is required for the main dough, but no flour ingredients are defined in the '${mainDoughMixStep.step_name}' step. Assigning to default flour.`);
+            const defaultFlour = availableIngredients.find(ing => !ing.is_wet && ing.ingredient_name?.toLowerCase().includes('flour'));
+            if (defaultFlour) {
+                 results.mainDoughAdds.flours.push({
+                    ingredient_id: defaultFlour.ingredient_id,
+                    ingredient_name: defaultFlour.ingredient_name,
+                    weight: flourNeededForMainDough,
+                    percentageOfMainDoughFlour: 100,
+                });
+            } else {
+                results.errors.push("No default flour found to assign remaining main dough flour.");
+            }
+        }
+    } else if (flourNeededForMainDough > 0 && !mainDoughMixStep) {
+        results.errors.push("Main dough requires flour, but no 'Mix Final Dough' step found. Assigning to default flour.");
+         const defaultFlour = availableIngredients.find(ing => !ing.is_wet && ing.ingredient_name?.toLowerCase().includes('flour'));
+            if (defaultFlour) {
+                 results.mainDoughAdds.flours.push({
+                    ingredient_id: defaultFlour.ingredient_id,
+                    ingredient_name: defaultFlour.ingredient_name,
+                    weight: flourNeededForMainDough,
+                    percentageOfMainDoughFlour: 100,
+                });
+            } else {
+                 results.errors.push("No default flour found to assign remaining main dough flour and no mix step defined.");
+            }
     }
 
-    // --- Core Calculation Logic ---
-    let finalFlourWeight = 0;
-    let finalWaterWeight = 0;
-    let finalStarterWeight = 0;
-    let saltWeightValue = 0;
-    let totalFlourInRecipe = 0;
+    // Rounding and Final Totals
+    const round = (num) => (isNaN(num) || !isFinite(num)) ? 0 : Math.max(0, Math.round(num));
+    const round1Decimal = (num) => (isNaN(num) || !isFinite(num)) ? 0 : Math.max(0, parseFloat(num.toFixed(1)));
 
-    // Calculate total flour based on the sum of percentages (100% flour + hydration% + salt%)
-    // Avoid division by zero if percentages sum to zero (unlikely in valid scenarios)
-    if ((1 + hydrationPercentageNum + saltPercentageNum) !== 0) {
-        totalFlourInRecipe = targetDoughWeightNum / (1 + hydrationPercentageNum + saltPercentageNum);
-    } else if (targetDoughWeightNum > 0) {
-        // Edge case: if percentages are such that denominator is zero, but target weight is positive.
-        // This implies an impossible recipe, return target weight as total, others zero.
-        return { flourWeight: 0, waterWeight: 0, starterWeight: 0, saltWeight: 0, totalWeight: targetDoughWeightNum };
-    }
+    results.totalFlourInRecipe = round(results.totalFlourInRecipe);
+    // totalWaterInRecipe and totalSaltInRecipe are based on the initial totalFlourInRecipe, before accumulation adjustments.
+    // These are the *targets*.
+    // Let's calculate the *actual* total water from components:
+    let actualTotalWater = accumulatedWaterFromPreferments + (results.mainDoughAdds.water || 0);
 
 
-    if (starterPercentageNum > 0 && levainStep) {
-        // Calculate starter weight based on its percentage of total flour
-        finalStarterWeight = totalFlourInRecipe * starterPercentageNum;
-        // Calculate flour and water content within the starter
-        const flourInStarter = finalStarterWeight / (1 + starterHydrationNum);
-        const waterInStarter = finalStarterWeight - flourInStarter;
+    results.prefermentsSummary = results.prefermentsSummary.map(p => ({
+        ...p,
+        totalWeight: round(p.totalWeight),
+        flourWeight: round(p.flourWeight),
+        waterWeight: round(p.waterWeight),
+        flourBreakdown: p.flourBreakdown.map(f => ({ ...f, weight: round(f.weight) })),
+    }));
 
-        // Adjust main flour and water by subtracting amounts from starter
-        finalFlourWeight = totalFlourInRecipe - flourInStarter;
-        const totalWaterInRecipe = totalFlourInRecipe * hydrationPercentageNum;
-        finalWaterWeight = totalWaterInRecipe - waterInStarter;
-        // Salt is based on total flour in the recipe (including flour in starter)
-        saltWeightValue = totalFlourInRecipe * saltPercentageNum;
-    } else {
-        // No starter, or starter details are missing; calculate based on added flour and water directly
-        finalFlourWeight = totalFlourInRecipe;
-        finalWaterWeight = finalFlourWeight * hydrationPercentageNum;
-        saltWeightValue = finalFlourWeight * saltPercentageNum; // Salt based on this flour
-        finalStarterWeight = 0;
-    }
+    results.mainDoughAdds.flours = results.mainDoughAdds.flours.map(f => ({ ...f, weight: round(f.weight) }));
+    results.mainDoughAdds.water = round(results.mainDoughAdds.water);
+    results.mainDoughAdds.salt = round1Decimal(results.mainDoughAdds.salt);
 
-    // --- Rounding and Adjustments ---
-    // Helper to round to nearest whole number, ensuring non-negative results
-    const round = (num) => {
-        if (isNaN(num) || !isFinite(num)) return 0;
-        return Math.max(0, Math.round(num)); // Ensure non-negative
-    }
-    // Helper to round salt to one decimal place, ensuring non-negative
-     const roundSalt = (num) => {
-        if (isNaN(num) || !isFinite(num)) return 0;
-        const val = parseFloat(num.toFixed(1));
-        return Math.max(0, val); // Ensure non-negative
-    }
+    // Recalculate actual grand total from rounded components
+    let finalCalculatedWeight = results.mainDoughAdds.salt + results.mainDoughAdds.water;
+    results.mainDoughAdds.flours.forEach(f => finalCalculatedWeight += f.weight);
+    results.prefermentsSummary.forEach(p => {
+        // Add preferment total weight (already sum of its rounded flour & water)
+        finalCalculatedWeight += p.totalWeight;
+    });
+    
+    // Final adjustment to water in mainDoughAdds to try to hit targetDoughWeightNum
+    const weightDifference = targetDoughWeightNum - finalCalculatedWeight;
+    // Only adjust water if there's flour in the main dough or preferments to absorb it,
+    // and if the difference is within a reasonable threshold.
+    const totalFlourInFinalDoughMix = results.mainDoughAdds.flours.reduce((sum, f) => sum + f.weight, 0) +
+                                  results.prefermentsSummary.reduce((sum, p) => sum + p.flourWeight, 0);
 
-    let ffw = round(finalFlourWeight);
-    let fww = round(finalWaterWeight);
-    let fsw = round(finalStarterWeight);
-    let swv = roundSalt(saltWeightValue);
-
-    // Adjust water to meet target dough weight more precisely,
-    // compensating for accumulated rounding differences.
-    let calculatedTotal = ffw + fww + fsw + swv;
-    let adjustedWaterWeight = fww;
-    const diff = targetDoughWeightNum - calculatedTotal;
-
-    // Only adjust if the difference is small and meaningful,
-    // and if there's flour or starter to hydrate (to avoid adding water to a zero-flour recipe).
-    if (Math.abs(diff) > 0.1 && Math.abs(diff) < 25) { // Threshold for adjustment
-        if (ffw > 0 || fsw > 0) {
-             adjustedWaterWeight = round(fww + diff); // Add or subtract difference from water
+    if (Math.abs(weightDifference) >= 0.1 && Math.abs(weightDifference) < Math.max(25, targetDoughWeightNum * 0.025) ) {
+        if (totalFlourInFinalDoughMix > 0 || results.mainDoughAdds.water > 0) { // Check if there's something to hydrate or existing water to adjust
+             results.mainDoughAdds.water = round(results.mainDoughAdds.water + weightDifference);
+             finalCalculatedWeight += weightDifference;
+        } else if (results.prefermentsSummary.some(p => p.waterWeight > 0 && p.totalWeight + weightDifference >= p.flourWeight)) {
+            // If no main dough water/flour, try to adjust last preferment's water if it makes sense
+            // This part is complex and might be better handled by an error or different strategy.
+            // For now, primary adjustment is to main dough water.
         }
     }
-    calculatedTotal = ffw + adjustedWaterWeight + fsw + swv;
+    results.grandTotalWeight = round(finalCalculatedWeight);
 
-    return {
-        flourWeight: ffw,
-        waterWeight: adjustedWaterWeight,
-        starterWeight: fsw,
-        saltWeight: swv,
-        totalWeight: round(calculatedTotal) // Final rounding for total weight
-    };
+    // Update actual total water and overall hydration based on final component weights
+    actualTotalWater = results.prefermentsSummary.reduce((sum, p) => sum + p.waterWeight, 0) + results.mainDoughAdds.water;
+    results.totalWaterInRecipe = round(actualTotalWater);
+
+    if (results.totalFlourInRecipe > 0) {
+        results.bakerPercentages.hydration = parseFloat(((results.totalWaterInRecipe / results.totalFlourInRecipe) * 100).toFixed(1));
+    } else {
+        results.bakerPercentages.hydration = parseFloat(overallHydrationPercentage); // Fallback to target if no flour
+    }
+    // Salt percentage is already set based on total flour and target.
+
+    return results;
 }
-
 
 /**
  * Generates a unique ID for a recipe step, prioritizing existing database IDs
  * over temporary client-side IDs. This is crucial for React keys and drag-and-drop functionality.
- * @param {Object} step - The recipe step object.
- * @returns {string|number} The unique ID for the step.
  */
 export const getStepDnDId = (step) => step.recipe_step_id || step.temp_client_id;

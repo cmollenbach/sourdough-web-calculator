@@ -20,14 +20,20 @@ import styles from './RecipeCalculator.module.css';
 function StepsColumn({
     recipeSteps,
     predefinedSteps,
+    availableIngredients, // <<< NEW PROP from RecipeCalculator
     onStepChange,
-    onDeleteStep, // This is the prop passed from RecipeCalculator
+    onDeleteStep,
     onAddStep,
     onDragEnd,
-    isLoadingPredefinedSteps,
+    isLoadingPredefinedSteps, // This prop might represent combined loading state from RecipeCalculator
     isSaving,
-    bulkFermentStepId,
+    // Specific step type IDs to be passed to StepEditor
     levainStepId,
+    bulkFermentStepId,
+    mixFinalDoughStepId, // <<< NEW PROP from RecipeCalculator
+    poolishBuildStepId,  // <<< NEW PROP from RecipeCalculator
+    bigaBuildStepId,     // <<< NEW PROP from RecipeCalculator
+    // ... any other specific step type IDs you might have ...
     isInTemplateMode,
     getStepDnDId
 }) {
@@ -36,12 +42,8 @@ function StepsColumn({
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
-    // DEBUG: Check the onDeleteStep prop when StepsColumn renders or re-renders
-    // This might log many times if recipeSteps changes often.
-    // console.log('StepsColumn: onDeleteStep prop is type:', typeof onDeleteStep);
-
-
     const addStepButtonText = () => {
+        // isLoadingPredefinedSteps might now cover loading of ingredients too if combined in RecipeCalculator
         if (isLoadingPredefinedSteps) return 'Loading types...';
         if (predefinedSteps.length === 0 && !isLoadingPredefinedSteps) return 'No Step Types Loaded';
         return '⊕ Add Step';
@@ -53,25 +55,29 @@ function StepsColumn({
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                 <SortableContext items={recipeSteps.map(s => getStepDnDId(s))} strategy={verticalListSortingStrategy}>
                     <div className={styles.stepsManagementSection}>
-                        {isLoadingPredefinedSteps && <p className={styles.loadingMessage}>Loading step types...</p>}
+                        {isLoadingPredefinedSteps && ( // This could be a combined loading state
+                            <p className={styles.loadingMessage}>Loading essential data...</p>
+                        )}
                         {recipeSteps.map((step, index) => {
-                            // DEBUG: Check the onDeleteStep prop specifically where it's passed to StepEditor
-                            if (index === 0) { // Log only for the first item to avoid flooding console, or remove condition for all
-                                console.log(`StepsColumn mapping step "${step.step_name}": onDeleteStep prop passed to StepEditor is type:`, typeof onDeleteStep);
-                            }
                             return (
                                 <SortableStepItem key={getStepDnDId(step)} id={getStepDnDId(step)}>
                                     <StepEditor
                                         step={step}
                                         index={index}
                                         predefinedSteps={predefinedSteps}
+                                        availableIngredients={availableIngredients} // <<< PASSING PROP
                                         onStepChange={onStepChange}
-                                        onDeleteStep={onDeleteStep} // Prop being passed
+                                        onDeleteStep={onDeleteStep}
                                         isSaving={isSaving}
                                         isInTemplateMode={isInTemplateMode}
-                                        bulkFermentStepId={bulkFermentStepId}
+                                        // Pass all relevant step IDs
                                         levainStepId={levainStepId}
-                                        // getStepDnDId is not directly used by StepEditor, but by SortableStepItem
+                                        bulkFermentStepId={bulkFermentStepId}
+                                        mixFinalDoughStepId={mixFinalDoughStepId} // <<< PASSING PROP
+                                        poolishBuildStepId={poolishBuildStepId}   // <<< PASSING PROP
+                                        bigaBuildStepId={bigaBuildStepId}       // <<< PASSING PROP
+                                        // ... pass other specific step IDs ...
+                                        dndListeners={undefined} // Listeners are passed to SortableStepItem which handles it
                                     />
                                 </SortableStepItem>
                             );
@@ -80,7 +86,7 @@ function StepsColumn({
                             <button
                                 type="button"
                                 onClick={onAddStep}
-                                disabled={isLoadingPredefinedSteps || predefinedSteps.length === 0 || isSaving}
+                                disabled={isLoadingPredefinedSteps || (predefinedSteps && predefinedSteps.length === 0) || isSaving || (availableIngredients && availableIngredients.length === 0 && !isLoadingPredefinedSteps) }
                                 className="btn btn-secondary buttonWithSpinner"
                                 style={{ width: '100%', marginTop: 'var(--spacing-lg)' }}
                             >
