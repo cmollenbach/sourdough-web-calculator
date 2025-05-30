@@ -5,125 +5,175 @@
 
 /* CSS Custom Properties (Variables) for Theming */
 :root {
+  /* Color Palette */
   --color-background: #f7f5f2;
   --color-surface: #ffffff;
   --color-primary: #8D6E63;
   --color-primary-darker: #6D4C41;
-  --color-secondary: #F5F5F5; /* Used for subtle backgrounds if needed */
+  --color-primary-lighter: #A1887F; /* Added for lighter variations */
+  --color-secondary: #F5F5F5;    /* For subtle backgrounds, borders */
+  --color-accent: #FFAB40;       /* Example accent color for highlights */
   --color-text: #5D4037;
+  --color-text-light: #FFFFFF;   /* For text on dark backgrounds */
   --color-text-muted: #796A5B;
   --color-border: #D7CCC8;
+  --color-border-light: #E0E0E0; /* Lighter border option */
   --color-error: #B00020;
-  --color-error-rgb: 176, 0, 32;
   --color-success: #2E7D32;
   --color-link: var(--color-primary);
   --color-link-hover: var(--color-primary-darker);
+  --color-disabled-bg: #E0E0E0;
+  --color-disabled-text: #A0A0A0;
 
+  /* RGB versions for alpha transparency */
+  --color-primary-rgb: 141, 110, 99;
+  --color-error-rgb: 176, 0, 32;
+  --color-success-rgb: 46, 125, 50; /* Added for consistency */
+
+
+  /* Typography */
   --font-family-headings: 'Merriweather', serif;
   --font-family-body: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
+  --font-size-base: 1.125rem; /* 18px */
+  --font-size-small: 0.9rem;
+  --font-size-large: 1.3rem;
+  --font-size-xl: 1.6rem;
+  --font-size-xxl: 2.1rem;
+  --line-height-base: 1.6;
+  --font-weight-normal: 400;
+  --font-weight-bold: 700;
 
+  /* Spacing Units */
+  --spacing-unit: 8px;
+  --spacing-xs: calc(var(--spacing-unit) * 0.5);  /* 4px */
+  --spacing-sm: var(--spacing-unit);             /* 8px */
+  --spacing-md: calc(var(--spacing-unit) * 1.5); /* 12px */
+  --spacing-lg: calc(var(--spacing-unit) * 2);   /* 16px */
+  --spacing-xl: calc(var(--spacing-unit) * 3);   /* 24px */
+
+  /* Borders & Shadows */
   --border-radius-small: 4px;
   --border-radius-medium: 8px;
-  --spacing-unit: 8px;
+  --border-default: 1px solid var(--color-border);
+  --box-shadow-soft: 0 2px 6px rgba(0, 0, 0, 0.08);
+  --box-shadow-medium: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --box-shadow-focus: 0 0 0 3px rgba(var(--color-primary-rgb), 0.25);
 
+  /* Spinner */
   --spinner-size: 1.2em;
   --spinner-border-size: 0.15em;
   --spinner-color: var(--color-primary);
   --spinner-color-light: var(--color-surface);
-  --color-primary-rgb: 141, 110, 99;
+
+    --color-warning: #FFA000; /* Orange for warnings */
+  --color-warning-rgb: 255, 160, 0;
+  --color-warning-light: rgba(var(--color-warning-rgb), 0.1);
+
+  --color-info: #1976D2;    /* Blue for informational messages */
+  --color-info-rgb: 25, 118, 210;
+  --color-info-light: rgba(var(--color-info-rgb), 0.1);
+
+  --color-success-light: rgba(var(--color-success-rgb), 0.1); /* Already in your sheet, good! */
+  --color-error-light: rgba(var(--color-error-rgb), 0.1); /* Already in your sheet, good! */
+
+  --modal-overlay-bg: rgba(0, 0, 0, 0.6); /* Slightly darker overlay */
+  --modal-content-bg: var(--color-surface);
+  --modal-box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  --modal-header-border: var(--color-border-light);
+  --modal-footer-border: var(--color-border-light);
+
+  --toast-default-bg: #333; /* Dark default toast */
+  --toast-default-text: var(--color-text-light);
+  --toast-success-bg: var(--color-success);
+  --toast-error-bg: var(--color-error);
+  --toast-warning-bg: var(--color-warning);
+  --toast-info-bg: var(--color-info);
+  --toast-text-light: var(--color-text-light); /* For toasts with dark backgrounds */
+  --toast-box-shadow: var(--box-shadow-medium);
+  --toast-border-radius: var(--border-radius-small);
 }
 
 /* Global Resets and Body Styling */
 body {
   margin: 0;
   font-family: var(--font-family-body);
-  font-size: 1.125rem;
+  font-size: var(--font-size-base);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--color-background);
   color: var(--color-text);
-  line-height: 1.6;
+  line-height: var(--line-height-base);
 }
 
 /* Main App Container - Frame */
 .App {
   max-width: 1200px;
-  margin: calc(var(--spacing-unit) * 2) auto;
-  padding: calc(var(--spacing-unit) * 2);
+  margin: var(--spacing-lg) auto;
+  padding: var(--spacing-lg);
   background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
+  border: var(--border-default);
   border-radius: var(--border-radius-medium);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: var(--box-shadow-medium);
 }
 
 /* Global App Title Styling */
 .app-title {
   text-align: center;
   margin-top: 0;
-  margin-bottom: calc(var(--spacing-unit) * 2);
+  margin-bottom: var(--spacing-lg);
   font-family: var(--font-family-headings);
-  color: var(--color-text);
-  font-size: 2.2rem;
-  font-weight: 700;
+  color: var(--color-text); /* Or a more specific heading color */
+  font-size: var(--font-size-xxl);
+  font-weight: var(--font-weight-bold);
 }
 
-/* Navigation Styling */
+/* Navigation Styling (largely as you had it, ensuring variables) */
 nav {
   background-color: var(--color-surface);
-  padding: var(--spacing-unit) 0;
+  padding: var(--spacing-sm) 0;
   border-radius: var(--border-radius-medium);
-  margin-bottom: calc(var(--spacing-unit) * 2);
+  margin-bottom: var(--spacing-lg);
 }
 
-nav ul.main-nav-list { /* Target the specific ul */
+nav ul.main-nav-list {
   list-style: none;
-  padding: 0 calc(var(--spacing-unit) * 2); /* Horizontal padding for the whole nav */
+  padding: 0 var(--spacing-lg);
   margin: 0;
   display: flex;
-  justify-content: space-between; /* Key for distributing space */
+  justify-content: space-between;
   align-items: center;
-  min-height: 40px; 
+  min-height: 40px;
 }
 
-
-
 .nav-item-center {
-  text-align: center; /* Centers the text within this list item */
-  flex-grow: 1; /* Allows this item to expand and push left/right to edges */
-  /* If the welcome message should not expand, remove flex-grow and adjust text-align.
-     True centering with flex-grow:1 on center item works best if left/right items have similar width,
-     or if you want the center item to occupy the remaining space.
-     Without flex-grow, justify-content: space-between will still try to space them out.
-  */
+  text-align: center;
+  flex-grow: 1;
 }
 
 .nav-item-right {
-  display: flex; /* If it contains multiple items like Login/Register */
+  display: flex;
   align-items: center;
-  gap: calc(var(--spacing-unit) * 1.5); /* Spacing for items within this group */
+  gap: var(--spacing-md);
 }
 
-/* General styling for interactive elements within nav items */
 .nav-item-left a,
-.nav-item-center span, /* Target span specifically if needed */
+.nav-item-center span,
 .nav-item-right a,
-.nav-item-right button {
+.nav-item-right button.btn-nav-logout { /* More specific class for logout */
   text-decoration: none;
-  /* color is set by more specific rules below */
-  font-weight: bold;
-  padding: calc(var(--spacing-unit) * 0.75) calc(var(--spacing-unit) * 1.25);
+  font-weight: var(--font-weight-bold);
+  padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--border-radius-small);
   transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
   display: inline-flex;
   align-items: center;
 }
 
-/* Styling for NavLinks (Calculator, Login, Register) */
 .nav-item-left a,
 .nav-item-right a {
-  color: var(--color-primary);
+  color: var(--color-link);
 }
 
 .nav-item-left a:hover,
@@ -131,70 +181,53 @@ nav ul.main-nav-list { /* Target the specific ul */
 .nav-item-right a:hover,
 .nav-item-right a.active {
   color: var(--color-link-hover);
-  background-color: transparent; 
-}
-.nav-item-left a.active,
-.nav-item-right a.active {
-  box-shadow: none; 
+  background-color: transparent;
+  box-shadow: none;
 }
 
-/* Styling for Welcome Message */
 .nav-item-center span {
   color: var(--color-text-muted);
-  font-size: 0.9em;
-  font-weight: normal; 
-  padding: calc(var(--spacing-unit) * 0.75) calc(var(--spacing-unit) * 1); /* Balanced padding */
-}
-
-/* Styling for Logout Button */
-.nav-item-right button {
-  color: var(--color-primary);
-  background-color: transparent;
-  border: 1px solid var(--color-primary);
-  cursor: pointer;
-  font-size: 0.9em; 
-}
-
-.nav-item-right button:hover {
-  background-color: var(--color-primary);
-  color: var(--color-surface);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-normal);
+  padding: var(--spacing-sm) var(--spacing-md);
 }
 
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-family-headings);
   color: var(--color-text);
-  margin-top: calc(var(--spacing-unit) * 3);
-  margin-bottom: calc(var(--spacing-unit) * 1.5);
-  font-weight: 700;
+  margin-top: var(--spacing-xl);
+  margin-bottom: var(--spacing-md);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.3; /* General line-height for headings */
 }
 
-h1 { font-size: 2.1rem; line-height: 1.2; }
-h2 { font-size: 1.6rem; line-height: 1.3; }
-h3 { font-size: 1.3rem; line-height: 1.4; }
+h1 { font-size: var(--font-size-xxl); }
+h2 { font-size: var(--font-size-xl); }
+h3 { font-size: var(--font-size-large); }
+/* Define h4, h5, h6 as needed */
 
 p {
-  margin-bottom: var(--spacing-unit);
+  margin-bottom: var(--spacing-md);
 }
 
 a {
   color: var(--color-link);
   text-decoration: none;
-  font-weight: bold;
+  font-weight: var(--font-weight-bold);
 }
-
 a:hover {
   color: var(--color-link-hover);
-  text-decoration: underline; /* General link underline on hover, nav links override this */
+  text-decoration: underline;
 }
 
-/* Basic Form Element Styling (remains the same) */
+/* Form Elements */
 label {
   display: block;
-  margin-bottom: calc(var(--spacing-unit) * 0.75);
+  margin-bottom: var(--spacing-sm);
   color: var(--color-text-muted);
-  font-weight: bold;
-  font-size: 0.9rem;
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-small);
 }
 
 input[type="text"],
@@ -204,9 +237,9 @@ input[type="number"],
 textarea,
 select {
   width: 100%;
-  padding: calc(var(--spacing-unit) * 1.25);
-  margin-bottom: calc(var(--spacing-unit) * 1.5);
-  border: 1px solid var(--color-border);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+  border: var(--border-default);
   border-radius: var(--border-radius-small);
   font-family: var(--font-family-body);
   font-size: 1rem;
@@ -224,52 +257,114 @@ textarea:focus,
 select:focus {
   outline: none;
   border-color: var(--color-primary);
-  box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 141, 110, 99), 0.25);
+  box-shadow: var(--box-shadow-focus);
 }
 
-button,
-input[type="submit"] {
+/* Standardized Button Classes */
+.btn {
   background-color: var(--color-primary);
-  color: var(--color-surface);
-  border: none;
-  padding: calc(var(--spacing-unit) * 1.25) calc(var(--spacing-unit) * 2.5);
+  color: var(--color-text-light);
+  border: 1px solid var(--color-primary);
+  padding: var(--spacing-md) var(--spacing-lg);
   border-radius: var(--border-radius-small);
   font-family: var(--font-family-body);
-  font-weight: bold;
+  font-weight: var(--font-weight-bold);
   font-size: 1rem;
   cursor: pointer;
-  transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+  transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out, border-color 0.2s ease-in-out;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  text-decoration: none;
+  line-height: 1.2; /* Ensure text is vertically centered */
 }
 
-button:hover,
-input[type="submit"]:hover {
+.btn:hover {
   background-color: var(--color-primary-darker);
+  border-color: var(--color-primary-darker);
   transform: translateY(-1px);
 }
 
-button:active,
-input[type="submit"]:active {
+.btn:active {
   transform: translateY(0px);
 }
 
-
-button:disabled,
-input[type="submit"]:disabled {
-  background-color: #E0E0E0;
-  color: #A0A0A0;
+.btn:disabled,
+.btn.disabled { /* Added .disabled class for <a> tags styled as buttons */
+  background-color: var(--color-disabled-bg);
+  color: var(--color-disabled-text);
+  border-color: var(--color-disabled-bg);
   cursor: not-allowed;
   transform: translateY(0);
 }
 
-/* Main content area styling */
-main {
-  padding: var(--spacing-unit);
+.btn-secondary {
+  background-color: var(--color-secondary);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+.btn-secondary:hover {
+  background-color: var(--color-border-light); /* Lighten for hover */
+  border-color: var(--color-border);
+}
+.btn-secondary:disabled,
+.btn-secondary.disabled {
+  background-color: var(--color-secondary);
+  color: var(--color-disabled-text);
+  border-color: var(--color-border-light);
+}
+
+.btn-danger {
+  background-color: var(--color-error);
+  color: var(--color-text-light);
+  border-color: var(--color-error);
+}
+.btn-danger:hover {
+  background-color: #8C001A; /* Darker error color */
+  border-color: #8C001A;
+}
+.btn-danger:disabled,
+.btn-danger.disabled {
+    background-color: lighten(var(--color-error), 20%);
+    border-color: lighten(var(--color-error), 20%);
+    color: var(--color-text-light);
+}
+
+/* Specific class for the Nav Logout Button to inherit .btn but customize if needed */
+.btn-nav-logout {
+  /* Inherits .btn styles by applying both classes in JSX */
+  /* Override or add specific styles here if it differs from .btn or .btn-secondary */
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+  padding: var(--spacing-sm) var(--spacing-md); /* Adjusted padding for nav */
+  font-size: 0.9em;
+  text-transform: none; /* Typically nav buttons aren't uppercase */
+}
+.btn-nav-logout:hover {
+  background-color: var(--color-primary);
+  color: var(--color-surface);
+  border-color: var(--color-primary);
+}
+
+/* Button with Spinner */
+.buttonWithSpinner {
+  /* This class can be used in conjunction with .btn, .btn-primary etc. */
+  position: relative;
+}
+
+.buttonSpinner {
+  display: inline-block;
+  width: var(--spinner-size);
+  height: var(--spinner-size);
+  border: var(--spinner-border-size) solid var(--spinner-color-light); /* Light part of spinner */
+  border-top-color: var(--spinner-color); /* Active part of spinner, matches button context or primary */
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-left: var(--spacing-sm);
 }
 
 @keyframes spin {
@@ -277,3 +372,186 @@ main {
     transform: rotate(360deg);
   }
 }
+
+/* Main content area styling */
+main {
+  padding: var(--spacing-lg); /* Add some padding around the main content within .App */
+}
+
+/* Feedback Messages (from RecipeCalculator.module.css, now global) */
+.feedback-message {
+    text-align: center;
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--border-radius-small);
+    font-size: var(--font-size-small);
+}
+
+.feedback-message-error {
+    color: var(--color-error);
+    background-color: rgba(var(--color-error-rgb), 0.1);
+    border: 1px solid var(--color-error);
+}
+
+.feedback-message-success {
+    color: var(--color-success);
+    background-color: rgba(var(--color-success-rgb), 0.1);
+    border: 1px solid var(--color-success);
+}
+
+.feedback-message-info {
+    color: var(--color-text-muted);
+    background-color: var(--color-secondary);
+    border: 1px solid var(--color-border);
+}
+
+.btn-small {
+  padding: var(--spacing-xs) var(--spacing-sm); /* Smaller padding */
+  font-size: var(--font-size-small);          /* Smaller font */
+  letter-spacing: 0.25px;                     /* Adjust letter spacing if needed */
+  /* You might not want uppercase for small buttons, or keep it */
+  /* text-transform: none; */
+}
+
+/* If you need an even smaller/icon-like button */
+.btn-icon {
+  padding: var(--spacing-xs);
+  font-size: var(--font-size-small); /* Or even smaller if the icon is the main content */
+  line-height: 1; /* Helps center icon-only content */
+}
+.btn-icon.btn-small { /* Combine if needed */
+    padding: var(--spacing-xs);
+}
+
+/* --- Modal Styles --- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--modal-overlay-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000; /* Ensure it's above other content */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.3s ease;
+}
+
+.modal-content { /* This will be the class on the inner div of Modal.js */
+  background-color: var(--modal-content-bg);
+  padding: var(--spacing-xl);
+  border-radius: var(--border-radius-medium);
+  box-shadow: var(--modal-box-shadow);
+  width: 90%;
+  max-width: 500px; /* Adjust as needed */
+  transform: scale(0.9);
+  transition: transform 0.3s ease;
+}
+
+.modal-overlay.open .modal-content {
+  transform: scale(1);
+}
+
+.modal-header {
+  font-family: var(--font-family-headings);
+  font-size: var(--font-size-large);
+  font-weight: var(--font-weight-bold);
+  padding-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+  border-bottom: 1px solid var(--modal-header-border);
+  color: var(--color-text);
+}
+
+.modal-body {
+  margin-bottom: var(--spacing-lg);
+  line-height: var(--line-height-base);
+  font-size: 1rem; /* Slightly smaller than base for modal content if desired */
+}
+
+.modal-footer {
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--modal-footer-border);
+  display: flex;
+  justify-content: flex-end; /* Align buttons to the right by default */
+  gap: var(--spacing-sm);
+}
+
+/* --- Toast Notifications --- */
+.toast-container {
+  position: fixed;
+  top: var(--spacing-lg);
+  right: var(--spacing-lg);
+  z-index: 1050; /* Higher than modals if they can overlap, or adjust as needed */
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.toast {
+  padding: var(--spacing-md);
+  border-radius: var(--toast-border-radius);
+  box-shadow: var(--toast-box-shadow);
+  color: var(--toast-text-light);
+  background-color: var(--toast-default-bg); /* Default toast style */
+  opacity: 0;
+  transform: translateX(100%);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  min-width: 250px; /* Example min-width */
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.toast-message { /* Class for the message text inside the toast */
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.toast-icon { /* Optional: if you add icons to toasts */
+    margin-right: var(--spacing-sm);
+}
+
+.toast-close-btn { /* Optional: if you add a close button */
+    background: none;
+    border: none;
+    color: inherit;
+    opacity: 0.7;
+    cursor: pointer;
+    padding: 0 var(--spacing-xs);
+    margin-left: var(--spacing-md);
+    font-size: 1.2em;
+}
+.toast-close-btn:hover {
+    opacity: 1;
+}
+
+/* Toast Types */
+.toast.toast-info {
+  background-color: var(--toast-info-bg);
+}
+.toast.toast-success {
+  background-color: var(--toast-success-bg);
+}
+.toast.toast-warning {
+  background-color: var(--toast-warning-bg);
+  color: var(--color-text); /* Warnings might look better with dark text on orange */
+}
+.toast.toast-warning .toast-close-btn {
+  color: var(--color-text);
+}
+.toast.toast-error {
+  background-color: var(--toast-error-bg);
+}
+
+/* Modal buttons will use .btn, .btn-secondary, .btn-danger from your existing styles */

@@ -1,0 +1,78 @@
+/* src/components/common/Modal.module.css */
+
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--modal-overlay-bg, rgba(0, 0, 0, 0.6));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease-in-out, visibility 0s linear 0.2s;
+}
+
+.overlayOpen {
+  opacity: 1;
+  visibility: visible;
+  transition-delay: 0s;
+}
+
+.modal {
+  background-color: var(--modal-content-bg, var(--color-surface));
+  padding: 0;
+  border-radius: var(--border-radius-medium);
+  box-shadow: var(--modal-box-shadow, 0 5px 15px rgba(0, 0, 0, 0.2));
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  transform: scale(0.95);
+  transition: transform 0.2s ease-in-out;
+}
+
+.overlayOpen .modal {
+  transform: scale(1);
+}
+
+.header {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-bottom: 1px solid var(--modal-header-border, var(--color-border-light));
+  color: var(--color-primary-darker, var(--color-text));
+  font-size: var(--font-size-large);
+  font-family: var(--font-family-headings);
+  font-weight: var(--font-weight-bold);
+  flex-shrink: 0;
+  text-align: left;
+}
+
+.body {
+  padding: var(--spacing-lg);
+  overflow-y: auto;
+  flex-grow: 1;
+  line-height: var(--line-height-base);
+  font-size: 1rem;
+  color: var(--color-text);
+}
+
+.footer {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-top: 1px solid var(--modal-footer-border, var(--color-border-light));
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-sm);
+  flex-shrink: 0;
+  background-color: var(--color-secondary);
+  border-bottom-left-radius: var(--border-radius-medium);
+  border-bottom-right-radius: var(--border-radius-medium);
+}
+
+/*
+  Modal buttons will use global .btn classes from App.css.
+  Apply them in Modal.js like: className={`btn btn-primary ${styles.myModalSpecificButtonIfNeeded}`}
+*/

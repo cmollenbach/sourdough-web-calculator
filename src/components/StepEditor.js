@@ -2,7 +2,7 @@
 import React from 'react';
 import styles from './RecipeCalculator.module.css';
 
-// Helper function to generate GenAI prompts
+// Helper function to generate GenAI prompts (remains the same)
 const getGenAiPrompt = (termKey, stepName = '') => {
     switch (termKey) {
         case 'step_name_levain_build':
@@ -27,7 +27,6 @@ const getGenAiPrompt = (termKey, stepName = '') => {
             return `Explain how "Duration (mins)" impacts various sourdough steps like autolyse, proofing, or specific rests. What are the general considerations for determining step duration?`;
         case 'step_temperature':
             return `Explain the importance of "Temperature (°C)" in sourdough baking for various steps like levain build, bulk fermentation, and proofing. How does temperature control affect fermentation speed and dough development?`;
-        // Add more cases for other terms as you identify them
         default:
             if (stepName) {
                 return `Explain the sourdough baking step or concept: "${stepName}". What is its purpose and typical process?`;
@@ -36,19 +35,18 @@ const getGenAiPrompt = (termKey, stepName = '') => {
     }
 };
 
-/**
- * @param {object} props
- * @param {object} props.step
- * @param {number} props.index
- * @param {Array<object>} props.predefinedSteps
- * @param {function(number, string, any): void} props.onStepChange
- * @param {function(number): void} props.onDeleteStep
- * @param {boolean} props.isSaving
- * @param {boolean} props.isInTemplateMode
- * @param {string | null} props.bulkFermentStepId
- * @param {string | null} props.levainStepId
- */
-function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, isSaving, isInTemplateMode, bulkFermentStepId, levainStepId }) {
+function StepEditor({
+    step,
+    index,
+    predefinedSteps,
+    onStepChange,
+    onDeleteStep,
+    isSaving,
+    isInTemplateMode,
+    bulkFermentStepId,
+    levainStepId,
+    dndListeners // Ensure this prop is received from SortableStepItem
+}) {
     const isBulkFermentSFStep = step.step_id === bulkFermentStepId;
     const isLevainStep = step.step_id === levainStepId;
     const fieldsDisabled = isSaving || isInTemplateMode;
@@ -65,27 +63,27 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
         onStepChange(index, field, value === '' ? null : parseFloat(value));
     };
 
-    const handleInfoClick = (termKey, stepName = '') => {
+    const handleInfoClickInternal = (termKey, stepName = '') => {
         const prompt = getGenAiPrompt(termKey, stepName);
         console.log("GenAI Prompt for:", termKey, "-", prompt);
-        // Future enhancement: Display this prompt in a modal with a "Copy" button.
-        // For now, a simple alert can also work if you prefer immediate feedback:
-        // alert(`Suggested GenAI Prompt:\n\n${prompt}`);
     };
 
     const renderInfoButton = (termKey, termDisplayName) => (
         <button
             type="button"
-            onClick={() => handleInfoClick(termKey, termDisplayName)}
+            onMouseDown={(e) => e.stopPropagation()} // Prevent DnD
+            onClick={(e) => {
+                e.stopPropagation(); // Also stop click propagation
+                handleInfoClickInternal(termKey, termDisplayName);
+            }}
             title={`Get AI explanation for ${termDisplayName || termKey.replace(/_/g, ' ')}`}
-            className={styles.infoButton}
+            className={`btn btn-icon btn-small ${styles.infoButton}`}
             aria-label={`Get explanation for ${termDisplayName || termKey.replace(/_/g, ' ')}`}
         >
             ⓘ
         </button>
     );
 
-    // Helper to decide if a step name warrants an info button
     const shouldShowInfoForStepName = (name) => {
         const notableStepNames = ['Levain Build', 'Autolyse', 'Bulk Fermentation with Stretch and Fold', 'Proofing', 'Baking'];
         return notableStepNames.includes(name);
@@ -96,22 +94,34 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
         if (name === 'Bulk Fermentation with Stretch and Fold') return 'bulk_fermentation_sf';
         if (name === 'Proofing') return 'proofing';
         if (name === 'Baking') return 'baking';
-        return name; // fallback or more generic key
+        return name;
     };
-
 
     return (
         <div className={styles.stepItemEditor}>
             <div className={styles.stepHeader}>
+                {/* DRAG HANDLE: Apply dndListeners here */}
+                <div
+                    {...(dndListeners || {})} // Spread dndListeners; provide empty object if undefined
+                    className={styles.dragHandle}
+                    style={{ cursor: dndListeners ? 'grab' : 'default', padding: '0 8px', marginRight: '8px', touchAction: 'none' }} // Prevent scrolling on touch
+                    title="Drag to reorder step"
+                    // The onMouseDown for the handle itself comes from dndListeners
+                >
+                    ☰
+                </div>
                 <h4>
                     Step {step.step_order || index + 1}:
-                    {/* MODIFIED: Conditional display for step name/type */}
                     {predefinedSteps && predefinedSteps.length > 0 && !isInTemplateMode ? (
-                        // Fully interactive mode for logged-in users not in template mode
                         <select
                             value={step.step_id || ''}
-                            onChange={(e) => handleNumericFieldChange('step_id', e.target.value)}
-                            disabled={isSaving} // isInTemplateMode is false here, so only check isSaving
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => {
+                                e.stopPropagation();
+                                handleNumericFieldChange('step_id', e.target.value);
+                            }}
+                            disabled={isSaving}
                             className={styles.stepTypeSelect}
                         >
                             <option value="">-- Select Step Type --</option>
@@ -120,20 +130,26 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                             ))}
                         </select>
                     ) : (
-                        // Read-only display for step name (for public view or when in template mode for logged-in user)
-                        <span style={{ marginLeft: '8px', fontWeight: 'normal', color: 'var(--color-text)' }} className={styles.stepNameTextDisplay}>
+                        <span style={{ marginLeft: 'var(--spacing-sm)', fontWeight: 'var(--font-weight-normal)', color: 'var(--color-text)' }} >
                             {step.step_name || 'Unnamed Step'}
                         </span>
                     )}
-                    {/* Info button logic remains the same, relying on step.step_name */}
                     {shouldShowInfoForStepName(step.step_name) && renderInfoButton(getTermKeyForStepName(step.step_name), step.step_name)}
                 </h4>
-                {/* END OF MODIFIED PART */}
                 {!isInTemplateMode && (
                     <button
                         type="button"
-                        className={styles.removeStepBtn}
-                        onClick={() => onDeleteStep(index)}
+                        className="btn btn-danger btn-small"
+                        onMouseDown={(e) => e.stopPropagation()} // Crucial for preventing drag
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            console.log(`StepEditor Remove button clicked for index: ${index}, step_order: ${step.step_order}, step_name: "${step.step_name}"`);
+                            if (typeof onDeleteStep === 'function') {
+                                onDeleteStep(index);
+                            } else {
+                                console.error('onDeleteStep is NOT a function in StepEditor! Received:', onDeleteStep);
+                            }
+                        }}
                         disabled={isSaving}
                     >
                         Remove
@@ -153,7 +169,9 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                             id={`step-total-bulk-time-${index}`}
                             placeholder="e.g., 240"
                             value={step.duration_override ?? ''}
-                            onChange={e => handleNumericFieldChange('duration_override', e.target.value)}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => { e.stopPropagation(); handleNumericFieldChange('duration_override', e.target.value);}}
                             disabled={fieldsDisabled}
                         />
                     </div>
@@ -167,7 +185,9 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                             id={`step-sf-interval-${index}`}
                             placeholder="e.g., 30"
                             value={step.stretch_fold_interval_minutes ?? ''}
-                            onChange={e => handleNumericFieldChange('stretch_fold_interval_minutes', e.target.value)}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => { e.stopPropagation(); handleNumericFieldChange('stretch_fold_interval_minutes', e.target.value);}}
                             disabled={fieldsDisabled}
                         />
                     </div>
@@ -183,7 +203,9 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                         id={`step-duration-${index}`}
                         placeholder="e.g., 60"
                         value={step.duration_override ?? ''}
-                        onChange={e => handleNumericFieldChange('duration_override', e.target.value)}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => { e.stopPropagation(); handleNumericFieldChange('duration_override', e.target.value);}}
                         disabled={fieldsDisabled}
                     />
                 </div>
@@ -199,7 +221,9 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                     id={`step-temp-${index}`}
                     placeholder="e.g., 24"
                     value={step.target_temperature_celsius ?? ''}
-                    onChange={e => handleFloatFieldChange('target_temperature_celsius', e.target.value)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => { e.stopPropagation(); handleFloatFieldChange('target_temperature_celsius', e.target.value);}}
                     disabled={fieldsDisabled}
                 />
             </div>
@@ -216,7 +240,9 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                             id={`step-levain-contrib-${index}`}
                             placeholder="e.g., 20"
                             value={step.contribution_pct ?? ''}
-                            onChange={e => handleFloatFieldChange('contribution_pct', e.target.value)}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => { e.stopPropagation(); handleFloatFieldChange('contribution_pct', e.target.value);}}
                             disabled={fieldsDisabled}
                         />
                     </div>
@@ -230,7 +256,9 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                             id={`step-levain-hydra-${index}`}
                             placeholder="e.g., 100"
                             value={step.target_hydration ?? ''}
-                            onChange={e => handleFloatFieldChange('target_hydration', e.target.value)}
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={(e) => { e.stopPropagation(); handleFloatFieldChange('target_hydration', e.target.value);}}
                             disabled={fieldsDisabled}
                         />
                     </div>
@@ -241,7 +269,9 @@ function StepEditor({ step, index, predefinedSteps, onStepChange, onDeleteStep, 
                 <textarea
                     id={`step-notes-${index}`}
                     value={step.notes || ''}
-                    onChange={e => handleFieldChange('notes', e.target.value)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => { e.stopPropagation(); handleFieldChange('notes', e.target.value);}}
                     disabled={fieldsDisabled}
                 />
             </div>

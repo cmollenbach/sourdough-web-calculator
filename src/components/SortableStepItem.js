@@ -2,31 +2,39 @@
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import styles from './RecipeCalculator.module.css'; // Import the module for active drag style
+import styles from './RecipeCalculator.module.css';
 
 export function SortableStepItem(props) {
   const {
     attributes,
-    listeners,
+    listeners, // We will pass these down
     setNodeRef,
     transform,
     transition,
-    isDragging, // Provided by useSortable
+    isDragging,
   } = useSortable({ id: props.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.7 : 1,
-    // Add other drag-specific styles if needed, or use a class
+    // No direct listeners here anymore
   };
 
-  // Apply an additional class when dragging for more distinct styling
   const itemClassName = isDragging ? styles.sortableStepDragActive : '';
 
+  // Clone the child (StepEditor) and pass down drag-related props
+  // The child will be responsible for applying listeners to a specific handle
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={itemClassName}>
-      {props.children}
+    <div ref={setNodeRef} style={style} className={itemClassName} {...attributes}>
+      {React.Children.map(props.children, child => {
+        if (React.isValidElement(child)) {
+          // Pass listeners and other necessary DnD props to StepEditor
+          // StepEditor will need to accept and use 'dndListeners' for its drag handle
+          return React.cloneElement(child, { dndListeners: listeners });
+        }
+        return child;
+      })}
     </div>
   );
 }

@@ -1,8 +1,8 @@
-// src/components/RegisterPage.js (Updated for new styling)
+// src/components/RegisterPage.js
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom'; // Added Link
+import { useNavigate, Link } from 'react-router-dom';
 import AuthService from '../services/AuthService';
-import './AuthForm.css'; // Import the shared CSS file
+import './AuthForm.css'; // Keep for .auth-form-container, .auth-form specific layouts
 
 function RegisterPage() {
     const [email, setEmail] = useState('');
@@ -22,7 +22,6 @@ function RegisterPage() {
             const data = await AuthService.register(email, password);
             console.log('Registration successful via AuthService:', data);
             setSuccessMessage(data.message || 'Registration successful! Please login.');
-            // Keep existing timeout to navigate to login after success
             setTimeout(() => {
                 navigate('/login');
             }, 2000);
@@ -35,43 +34,53 @@ function RegisterPage() {
     };
 
     return (
-        <div className="auth-form-container"> {/* Use shared container class */}
-            <div className="auth-form"> {/* Use shared form card class */}
+        <div className="auth-form-container"> {/* Uses AuthForm.css for layout */}
+            <div className="auth-form"> {/* Uses AuthForm.css for layout */}
                 <h2>Register</h2>
-                {error && <p className="error-message">{error}</p>} {/* Use shared error class */}
-                {successMessage && <p className="text-success">{successMessage}</p>} {/* Use shared success class from App.css */}
+                {/* UPDATED to use global feedback message classes */}
+                {error && <p className="feedback-message feedback-message-error">{error}</p>}
+                {successMessage && <p className="feedback-message feedback-message-success">{successMessage}</p>}
                 <form onSubmit={handleSubmit}>
-                    <div className="input-group">
+                    <div className="input-group"> {/* Uses AuthForm.css for layout */}
                         <label htmlFor="register-email">Email:</label>
-                        <input 
-                            type="email" 
-                            id="register-email" 
-                            value={email} 
-                            onChange={(e) => setEmail(e.target.value)} 
-                            required 
+                        <input
+                            type="email"
+                            id="register-email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
                             disabled={isLoading}
-                            placeholder="Enter your email" 
+                            placeholder="Enter your email"
+                            // Base input styles from App.css
                         />
                     </div>
-                    <div className="input-group">
+                    <div className="input-group"> {/* Uses AuthForm.css for layout */}
                         <label htmlFor="register-password">Password:</label>
-                        <input 
-                            type="password" 
-                            id="register-password" 
-                            value={password} 
-                            onChange={(e) => setPassword(e.target.value)} 
-                            required 
-                            minLength="8" 
+                        <input
+                            type="password"
+                            id="register-password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            minLength="8"
                             disabled={isLoading}
                             placeholder="Create a password (min. 8 characters)"
+                            // Base input styles from App.css
                         />
                     </div>
-                    <button type="submit" disabled={isLoading}>
+                    {/* UPDATED to use global button classes */}
+                    <button
+                        type="submit"
+                        className="btn btn-primary buttonWithSpinner" /* Apply width via AuthForm.css or inline if needed */
+                        style={{ width: '100%'}} /* Or add a .btn-block utility in App.css */
+                        disabled={isLoading}
+                    >
                         {isLoading ? 'Registering...' : 'Register'}
+                        {isLoading && <span className="buttonSpinner"></span>}
                     </button>
                 </form>
-                <div className="form-link">
-                    Already have an account? <Link to="/login">Login</Link>
+                <div className="form-link"> {/* Uses AuthForm.css for layout */}
+                    Already have an account? <Link to="/login">Login</Link> {/* Link styles from App.css */}
                 </div>
             </div>
         </div>

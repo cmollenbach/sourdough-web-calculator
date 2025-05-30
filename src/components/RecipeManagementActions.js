@@ -1,8 +1,8 @@
 // src/components/RecipeManagementActions.js
 import React from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import styles from './RecipeCalculator.module.css';
-import RecipeFields from './RecipeFields'; 
+import styles from './RecipeCalculator.module.css'; // Keep for layout styles if any are specific here
+import RecipeFields from './RecipeFields';
 
 /**
  * @param {object} props
@@ -20,7 +20,7 @@ import RecipeFields from './RecipeFields';
  * @param {boolean} props.isSaving
  * @param {string|null} props.currentRecipeId
  * @param {function} props.clearFeedback
- * @param {boolean} props.isInTemplateMode // Added prop
+ * @param {boolean} props.isInTemplateMode
  */
 function RecipeManagementActions({
     recipeName,
@@ -37,9 +37,9 @@ function RecipeManagementActions({
     isSaving,
     currentRecipeId,
     clearFeedback,
-    isInTemplateMode // Destructure new prop
+    isInTemplateMode
 }) {
-    const { isLoggedIn } = useAuth(); 
+    const { isLoggedIn } = useAuth();
     if (!isLoggedIn()) {
         return <p className={styles.authMessage}>Please login to save and load your recipes.</p>;
     }
@@ -48,7 +48,7 @@ function RecipeManagementActions({
         recipe_name: recipeName,
         description: description,
     };
-    
+
     const handleFieldChange = (field, value) => {
         if (field === 'recipe_name') {
             onRecipeNameChange(value);
@@ -65,24 +65,24 @@ function RecipeManagementActions({
     };
 
     return (
-        <div className={styles.recipeManagementGroup}>
+        <div className={styles.manageRecipesSection}> {/* Use module style for the section's own layout */}
             <h3>Manage Recipe Details & Actions</h3>
-            
+
             <RecipeFields
                 recipe={recipeDetailsForManage}
                 onFieldChange={handleFieldChange}
                 isSaving={isSaving}
                 clearFeedback={clearFeedback}
-                isManageSection={true} 
+                isManageSection={true}
             />
 
-            <div className={styles.inputGroup}>
+            <div className={styles.inputGroup}> {/* Module style for input group layout */}
                 <label htmlFor="loadRecipeSelect">Load Recipe:</label>
                 <select
                     id="loadRecipeSelect"
                     value={selectedRecipeToLoad}
                     onChange={onLoadRecipeChange}
-                    disabled={isLoadingRecipes || isSaving || isInTemplateMode} // Disable load when in template mode
+                    disabled={isLoadingRecipes || isSaving || isInTemplateMode}
                 >
                     <option value="">Select a recipe...</option>
                     {savedRecipes.map(recipe => (
@@ -98,19 +98,32 @@ function RecipeManagementActions({
             </div>
 
             <div className={`${styles.actionsGroup} ${styles.mainActions}`}>
-                <button onClick={onSaveOrUpdate} disabled={isSaving} className={styles.buttonWithSpinner}>
+                <button
+                    onClick={onSaveOrUpdate}
+                    disabled={isSaving}
+                    className="btn btn-primary buttonWithSpinner" /* UPDATED */
+                >
                     {getSaveButtonText()}
-                    {isSaving && <span className={styles.buttonSpinner}></span>}
+                    {isSaving && <span className="buttonSpinner"></span>} {/* Global spinner */}
                 </button>
-                {currentRecipeId && !isInTemplateMode && ( // Only show delete if it's a saved user recipe and not in template mode
-                    <button onClick={onDelete} disabled={isSaving} className={`${styles.buttonDanger} ${styles.buttonWithSpinner}`}>
+                {currentRecipeId && !isInTemplateMode && (
+                    <button
+                        onClick={onDelete}
+                        disabled={isSaving}
+                        className="btn btn-danger buttonWithSpinner" /* UPDATED */
+                    >
                         {isSaving ? 'Deleting...' : 'Delete Loaded Recipe'}
-                        {isSaving && <span className={styles.buttonSpinner}></span>}
+                        {isSaving && <span className="buttonSpinner"></span>} {/* Global spinner */}
                     </button>
                 )}
-                <button type="button" onClick={onClearForm} className={`${styles.buttonSecondary} ${styles.buttonWithSpinner}`} disabled={isSaving}>
+                <button
+                    type="button"
+                    onClick={onClearForm}
+                    className="btn btn-secondary buttonWithSpinner" /* UPDATED */
+                    disabled={isSaving}
+                >
                     Clear Form / New
-                    {isSaving && <span className={styles.buttonSpinner}></span>}
+                    {isSaving && <span className="buttonSpinner"></span>} {/* Global spinner */}
                 </button>
             </div>
         </div>

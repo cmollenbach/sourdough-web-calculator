@@ -7,24 +7,23 @@ import RecipeFields from './components/RecipeFields';
 import RecipeManagementActions from './components/RecipeManagementActions';
 import RecipeResults from './components/RecipeResults';
 import StepsColumn from './components/StepsColumn';
-import BaseTemplates from './components/BaseTemplates'; // Import the new component
+import BaseTemplates from './components/BaseTemplates';
 
-import styles from './components/RecipeCalculator.module.css';
+import styles from './components/RecipeCalculator.module.css'; // Keep for specific layout styles
 import { useAuth } from './contexts/AuthContext';
 import { useData } from './contexts/DataContext';
 
-// Import from new files
 import {
     LEVAIN_BUILD_STEP_NAME,
     INITIAL_RECIPE_FIELDS,
     DEFAULT_LEVAIN_STEP_TEMPLATE
-} from './constants/recipeConstants'; // Assuming constants are in src/constants
+} from './constants/recipeConstants';
 
 import {
     calculateRecipe,
     processRecipeSteps,
     getStepDnDId
-} from './utils/recipeUtils'; // Assuming utils are in src/utils
+} from './utils/recipeUtils';
 
 const initialState = {
     ...INITIAL_RECIPE_FIELDS,
@@ -144,47 +143,44 @@ function recipeReducer(state, action) {
             return { ...state, isLoadingBaseTemplates: action.payload };
         case 'LOAD_TEMPLATE_DATA': {
     const templateData = action.payload.template;
-    const { predefinedSteps } = action.additionalData;
+    const { predefinedSteps, levainStepIdDynamic, bulkFermentStepIdDynamic } = action.additionalData; // Ensure these are correctly passed
 
-    // Directly process template steps to ensure new temp_client_ids are generated
     const finalProcessedSteps = (templateData.steps || []).map((rawStep, index) => {
         const predefined = predefinedSteps.find(ps => ps.step_id === rawStep.step_id);
-        // Basic properties from processRecipeSteps
+        
+        // Define the step object carefully
+        const currentStepName = rawStep.step_name || (predefined ? predefined.step_name : `Unknown Step ID ${rawStep.step_id}`); // CORRECTED: Use rawStep.step_id
+
         const step = {
-            ...rawStep,
-            step_name: rawStep.step_name || (predefined ? predefined.step_name : `Unknown Step ID ${rawStep.step_id}`),
-            duration_override: rawStep.duration_override != null ? Number(rawStep.duration_override) : null,
+            ...rawStep, // Spread rawStep first
+            step_name: currentStepName, // Assign the determined name
+            // Ensure numeric conversions and defaults are applied correctly
+            duration_override: rawStep.duration_override != null ? Number(rawStep.duration_override) : (predefined?.defaultDurationMinutes ?? null),
             target_temperature_celsius: rawStep.target_temperature_celsius != null ? Number(rawStep.target_temperature_celsius) : null,
             contribution_pct: rawStep.contribution_pct != null ? Number(rawStep.contribution_pct) : null,
             target_hydration: rawStep.target_hydration != null ? Number(rawStep.target_hydration) : null,
             stretch_fold_interval_minutes: rawStep.stretch_fold_interval_minutes != null ? Number(rawStep.stretch_fold_interval_minutes) : null,
-            notes: rawStep.notes || (predefined ? predefined.description : '') || '', // Use predefined description as fallback for notes
+            notes: rawStep.notes || (predefined ? predefined.description : '') || '',
             
-            // --- Critical change here ---
             recipe_step_id: undefined, // Mark as not having a DB ID for this new instance
             temp_client_id: Date.now() + index + Math.random() + '_template_step', // Ensure a NEW unique client ID
+            step_order: rawStep.step_order || index + 1, // Ensure step_order is present
         };
         
-        // If it's a levain step, apply defaults if specific values aren't on the template step
-        // This mirrors logic that might be in your UPDATE_STEP or ADD_STEP for levain
-        const levainStepIdDynamic = action.additionalData.levainStepIdDynamic; // Assuming you pass this in additionalData
+        // Apply defaults if it's a specific step type and values are missing
         if (Number(step.step_id) === levainStepIdDynamic) {
             const levainDefaultFromPredefined = predefinedSteps.find(ps => ps.step_id === levainStepIdDynamic);
-            const levainDefault = levainDefaultFromPredefined || DEFAULT_LEVAIN_STEP_TEMPLATE; // Fallback to constant
+            const levainDefault = levainDefaultFromPredefined || DEFAULT_LEVAIN_STEP_TEMPLATE;
 
             step.contribution_pct = step.contribution_pct ?? levainDefault.contribution_pct;
             step.target_hydration = step.target_hydration ?? levainDefault.target_hydration;
-            // Duration might also come from predefined if not on step
-            if (step.duration_override == null && levainDefault.duration_override != null) {
-                step.duration_override = levainDefault.duration_override;
-            } else if (step.duration_override == null && predefined?.defaultDurationMinutes != null) {
-                 step.duration_override = predefined.defaultDurationMinutes;
+            
+            if (step.duration_override == null) { // Check if still null after initial assignment
+                step.duration_override = levainDefault.duration_override ?? (levainDefaultFromPredefined ? levainDefaultFromPredefined.defaultDurationMinutes : null);
             }
         }
-        // Add similar default logic for bulk ferment S&F if needed from template
-        const bulkFermentStepIdDynamic = action.additionalData.bulkFermentStepIdDynamic;
-         if (Number(step.step_id) === bulkFermentStepIdDynamic && step.stretch_fold_interval_minutes == null) {
-            step.stretch_fold_interval_minutes = 30; // Default if not specified on template step
+        if (Number(step.step_id) === bulkFermentStepIdDynamic && step.stretch_fold_interval_minutes == null) {
+            step.stretch_fold_interval_minutes = 30;
         }
 
         return step;
@@ -201,8 +197,8 @@ function recipeReducer(state, action) {
         currentRecipeId: null,
         selectedRecipeToLoad: '',
         isInTemplateMode: true,
-        activeTemplateId: templateData.recipe_id, // Use the template's original recipe_id for activeTemplateId
-        feedbackMessage: { type: '', text: `` },
+        activeTemplateId: templateData.recipe_id,
+        feedbackMessage: { type: '', text: `Template "${templateData.recipe_name}" loaded. Modify and save as new recipe.` }, // More informative
     };
 }
         case 'CLEAR_FORM': {
@@ -257,7 +253,11 @@ function RecipeCalculator() {
         predefinedStepsError
     } = useData();
 
-    const clearFeedback = useCallback(() => dispatch({ type: 'CLEAR_FEEDBACK' }), []);
+    const clearFeedback = useCallback(() => {
+        dispatch({ type: 'CLEAR_FEEDBACK' });
+        setStartBakeError(''); // Also clear bake-specific error
+    }, []);
+
 
     const recipeInputFields = {
         targetDoughWeight: state.targetDoughWeight,
@@ -385,53 +385,50 @@ function RecipeCalculator() {
             dispatch({ type: 'SET_LOADING', field: 'isLoadingRecipes', payload: false });
         }
     };
-const handleStartGuidedBake = async () => {
-    if (!state.currentRecipeId) {
-        setStartBakeError('Please load or save a recipe to start a guided bake.');
-        setTimeout(() => setStartBakeError(''), 5000); // Clear error after 5s
-        return;
-    }
-    if (!isLoggedIn()) {
-        setStartBakeError('Please login to start a guided bake.');
-        setTimeout(() => setStartBakeError(''), 5000); // Clear error after 5s
-        return;
-    }
-
-    setIsStartingBake(true);
-    setStartBakeError('');
-    dispatch({ type: 'CLEAR_FEEDBACK' }); // Clear other general feedback
-
-    try {
-        // Assuming RecipeService.startBake is implemented as discussed
-        const bakeSessionData = await RecipeService.startBake(state.currentRecipeId); 
-        if (bakeSessionData && bakeSessionData.bakeLogId) {
-            // Pass initial data to GuidedBakePage to potentially avoid an immediate refetch
-            navigate(`/bake/${bakeSessionData.bakeLogId}`, { 
-                state: { initialBakeData: bakeSessionData } 
-            });
-        } else {
-            // This case might be covered if RecipeService.startBake throws an error for missing bakeLogId
-            setStartBakeError('Failed to initiate bake session. Missing session ID from server response.');
-            console.error("Start bake response missing bakeLogId:", bakeSessionData);
+    const handleStartGuidedBake = async () => {
+        if (!state.currentRecipeId) {
+            setStartBakeError('Please load or save a recipe to start a guided bake.');
+            setTimeout(() => setStartBakeError(''), 5000);
+            return;
         }
-    } catch (err) {
-        console.error("RecipeCalculator: Error starting guided bake:", err);
-        setStartBakeError(err.message || 'An unexpected error occurred while starting the bake.');
-    } finally {
-        setIsStartingBake(false);
-    }
-};
+        if (!isLoggedIn()) {
+            setStartBakeError('Please login to start a guided bake.');
+            setTimeout(() => setStartBakeError(''), 5000);
+            return;
+        }
+
+        setIsStartingBake(true);
+        setStartBakeError('');
+        dispatch({ type: 'CLEAR_FEEDBACK' });
+
+        try {
+            const bakeSessionData = await RecipeService.startBake(state.currentRecipeId);
+            if (bakeSessionData && bakeSessionData.bakeLogId) {
+                navigate(`/bake/${bakeSessionData.bakeLogId}`, {
+                    state: { initialBakeData: bakeSessionData }
+                });
+            } else {
+                setStartBakeError('Failed to initiate bake session. Missing session ID from server response.');
+                console.error("Start bake response missing bakeLogId:", bakeSessionData);
+            }
+        } catch (err) {
+            console.error("RecipeCalculator: Error starting guided bake:", err);
+            setStartBakeError(err.message || 'An unexpected error occurred while starting the bake.');
+        } finally {
+            setIsStartingBake(false);
+        }
+    };
      const handleLoadTemplateData = useCallback((template) => {
         dispatch({
-    type: 'LOAD_TEMPLATE_DATA',
-    payload: { template: template },
-    additionalData: { 
-        predefinedSteps: predefinedSteps || [],
-        levainStepIdDynamic,      // Pass this from useData()
-        bulkFermentStepIdDynamic  // Pass this from useData()
-    }
-});
-    }, [predefinedSteps]);
+            type: 'LOAD_TEMPLATE_DATA',
+            payload: { template: template },
+            additionalData: {
+                predefinedSteps: predefinedSteps || [],
+                levainStepIdDynamic,
+                bulkFermentStepIdDynamic
+            }
+        });
+    }, [predefinedSteps, levainStepIdDynamic, bulkFermentStepIdDynamic]); // Added dependencies
 
     const handleSaveOrUpdateRecipe = async () => {
         clearFeedback();
@@ -571,7 +568,10 @@ const handleStartGuidedBake = async () => {
         dispatch({ type: 'ADD_STEP', payload: { predefinedSteps: predefinedSteps || [], levainStepIdDynamic, bulkFermentStepIdDynamic } });
     };
 
-    const handleDeleteStep = (indexToDelete) => dispatch({ type: 'DELETE_STEP', index: indexToDelete });
+    const handleDeleteStep = (indexToDelete) => {
+    console.log('Attempting to delete step at index:', indexToDelete); // DEBUG
+    dispatch({ type: 'DELETE_STEP', index: indexToDelete });
+};
 
     function handleDragEnd(event) {
         const { active, over } = event;
@@ -584,26 +584,31 @@ const handleStartGuidedBake = async () => {
         }
     }
 
+    const getFeedbackClassName = () => {
+        if (state.feedbackMessage.type === 'error') return 'feedback-message feedback-message-error';
+        if (state.feedbackMessage.type === 'success') return 'feedback-message feedback-message-success';
+        if (state.feedbackMessage.type === 'info') return 'feedback-message feedback-message-info';
+        return 'feedback-message'; // Default or hidden
+    };
+
+
     return (
         <>
             {predefinedStepsError && (
-                <p className={`${styles.feedbackMessage} ${styles.feedbackMessageError}`}>
+                <p className="feedback-message feedback-message-error"> {/* UPDATED */}
                     {predefinedStepsError}
                 </p>
             )}
             {state.feedbackMessage.text && (
-                <p className={`${styles.feedbackMessage} ${
-                    state.feedbackMessage.type === 'error' ? styles.feedbackMessageError :
-                    (state.feedbackMessage.type === 'success' ? styles.feedbackMessageSuccess : styles.feedbackMessageInfo)
-                }`}>
+                <p className={getFeedbackClassName()}> {/* UPDATED */}
                     {state.feedbackMessage.text}
                 </p>
             )}
             {startBakeError && (
-     <p className={`${styles.feedbackMessage} ${styles.feedbackMessageError}`}>
-        {startBakeError}
-    </p>
-)}
+                <p className="feedback-message feedback-message-error"> {/* UPDATED */}
+                    {startBakeError}
+                </p>
+            )}
 
             {isLoggedIn() && (predefinedSteps && predefinedSteps.length > 0) && (
                  <BaseTemplates
@@ -623,16 +628,13 @@ const handleStartGuidedBake = async () => {
                             recipe={recipeInputFields}
                             onFieldChange={handleRecipeFieldChange}
                             isSaving={state.isSaving}
-                            clearFeedback={() => {
-    clearFeedback(); // Clears general feedback message from reducer
-    setStartBakeError(''); // Also clear bake-specific error
-}}
+                            clearFeedback={clearFeedback}
                             isInputsSection={true}
                             isInTemplateMode={state.isInTemplateMode}
                         />
                     </div>
                     <RecipeResults results={calculationResults} />
-                    <div className={styles.manageRecipesSection}>
+                    <div className={styles.manageRecipesSection}> {/* Renamed from .manageRecipesSection for clarity if needed, or ensure it's styled correctly */}
                          <RecipeManagementActions
                             recipeName={state.recipe_name}
                             description={state.description}
@@ -647,25 +649,23 @@ const handleStartGuidedBake = async () => {
                             isLoadingRecipes={state.isLoadingRecipes}
                             isSaving={state.isSaving}
                             currentRecipeId={state.currentRecipeId}
-                            clearFeedback={() => {
-    clearFeedback(); // Clears general feedback message from reducer
-    setStartBakeError(''); // Also clear bake-specific error
-}}
+                            clearFeedback={clearFeedback}
                             isInTemplateMode={state.isInTemplateMode}
                         />
                         {isLoggedIn() && state.currentRecipeId && !state.isInTemplateMode && (
-    <div className={styles.actionsGroup} style={{ marginTop: 'var(--spacing-unit)' }}>
-        <button
-            onClick={handleStartGuidedBake}
-            disabled={isStartingBake || state.isSaving}
-            className={`${styles.buttonWithSpinner} ${styles.buttonPrimaryAccented}`} // Ensure .buttonPrimaryAccented is defined in your CSS
-            style={{ width: '100%', backgroundColor: 'var(--color-success)', color: 'white' }} // Example prominent styling
-        >
-            {isStartingBake ? 'Starting Bake...' : 'Start Guided Bake'}
-            {isStartingBake && <span className={styles.buttonSpinner}></span>}
-        </button>
-    </div>
-)}
+                            <div className={styles.actionsGroup} style={{ marginTop: 'var(--spacing-lg)' }}> {/* Use theme variable */}
+                                <button
+                                    onClick={handleStartGuidedBake}
+                                    disabled={isStartingBake || state.isSaving}
+                                    /* Apply global button classes and a specific one for accent if needed */
+                                    className="btn btn-primary buttonWithSpinner" /* Example: use .btn-primary or a new .btn-accent */
+                                    style={{ width: '100%', backgroundColor: 'var(--color-success)', color: 'var(--color-text-light)' }} // Prominent style
+                                >
+                                    {isStartingBake ? 'Starting Bake...' : 'Start Guided Bake'}
+                                    {isStartingBake && <span className="buttonSpinner"></span>} {/* Global spinner */}
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
                 <StepsColumn

@@ -1,607 +1,380 @@
 /* src/components/RecipeCalculator.module.css */
 
-/* Define custom properties scoped to the calculator layout */
+/* Define custom properties scoped to the calculator layout, using global theme variables where possible */
 .recipeCalculatorLayout {
-    --main-section-padding: calc(var(--spacing-unit) * 1.5); /* Reduced padding for main sections */
-    --step-item-padding: var(--spacing-unit); /* Padding inside each step item */
-    --step-item-margin-bottom: var(--spacing-unit); /* Margin below each step item */
-    --step-item-header-margin-bottom: var(--spacing-unit); /* Margin below step header */
-    --step-item-input-group-margin-bottom: calc(var(--spacing-unit) * 0.75); /* Margin between input rows in a step */
-    --step-item-input-gap: calc(var(--spacing-unit) * 0.75); /* Gap in two-column input groups in a step */
-    --step-item-numeric-input-max-width: 90px; /* Max-width for number inputs in steps */
-    --step-item-label-padding-right: calc(var(--spacing-unit) * 0.5);
+    --main-section-padding: var(--spacing-lg); /* Using global spacing */
+    --step-item-padding: var(--spacing-md);
+    --step-item-margin-bottom: var(--spacing-md);
+    --step-item-header-margin-bottom: var(--spacing-md);
+    --step-item-input-group-margin-bottom: var(--spacing-sm);
+    --step-item-input-gap: var(--spacing-sm);
+    --step-item-numeric-input-max-width: 100px; /* Increased slightly */
+    --step-item-label-padding-right: var(--spacing-sm);
 
-    /* Existing layout styles */
     display: flex;
     flex-wrap: nowrap;
-    gap: calc(var(--spacing-unit) * 2);
-    background-color: var(--color-surface);
-    padding: calc(var(--spacing-unit) * 2.5);
+    gap: var(--spacing-lg);
+    background-color: var(--color-surface); /* Use global variable */
+    padding: var(--spacing-xl);             /* Use global variable */
     border-radius: var(--border-radius-medium);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
-    border: 1px solid var(--color-border);
-    margin: calc(var(--spacing-unit) * 2) auto;
-    max-width: 1200px;
+    box-shadow: var(--box-shadow-medium);
+    border: var(--border-default);
+    margin: var(--spacing-lg) auto;
+    max-width: 1200px; /* This can be a global app max-width or specific */
 }
 
 .recipeDetailsColumn {
     flex: 2 1 60%;
-    min-width: 400px;
-    padding: var(--spacing-unit);
+    min-width: 400px; /* Or adjust based on content */
+    padding: var(--spacing-sm); /* Inner padding */
     display: flex;
     flex-direction: column;
-    gap: calc(var(--spacing-unit) * 2.5);
+    gap: var(--spacing-lg);
 }
 
 .stepsColumn {
     flex: 1 1 40%;
-    min-width: 320px;
-    padding: var(--spacing-unit);
+    min-width: 320px; /* Or adjust */
+    padding: var(--spacing-sm); /* Inner padding */
     display: flex;
     flex-direction: column;
 }
 
 /* Headings and Messages */
-.mainTitle {
-    text-align: center;
-    margin-bottom: calc(var(--spacing-unit) * 2.5);
-    font-family: var(--font-family-headings);
-    color: var(--color-text);
-    font-size: 2rem;
-}
+/* .mainTitle - This class was likely intended for App.js's main title, not here */
 
 .templateModeBanner {
-  background-color: #fff9c4; /* Light yellow, distinct but not too jarring */
-  color: #795548; /* Brown text for contrast */
-  padding: var(--spacing-unit) calc(var(--spacing-unit) * 2);
+  background-color: #fff9c4; /* Specific to this component, could be a theme variable if used elsewhere */
+  color: #795548;
+  padding: var(--spacing-sm) var(--spacing-lg);
   border-radius: var(--border-radius-small);
   text-align: center;
-  border: 1px solid #ffecb3; /* Slightly darker yellow border */
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    margin-top: calc(var(--spacing-unit) * 2); 
-}
-
-/* Add to src/components/RecipeCalculator.module.css */
-.infoButton {
-    margin-left: 5px;
-    background: none;
-    border: none;
-    color: var(--color-primary); /* Or any color you prefer */
-    cursor: pointer;
-    padding: 0;
-    font-size: 0.9em; /* Adjust as needed */
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.5em; /* Make it a bit square */
-    height: 1.5em;
-    border-radius: 50%; /* Make it round */
-    /* Optional: add a light border or background on hover/focus */
-}
-
-.infoButton:hover,
-.infoButton:focus {
-    background-color: rgba(var(--color-primary-rgb, 141, 110, 99), 0.1);
-    outline: none;
+  border: 1px solid #ffecb3;
+  box-shadow: var(--box-shadow-soft);
+  margin-top: var(--spacing-lg);
 }
 
 .templateModeBanner p {
   margin: 0;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: var(--font-size-small);
+  font-weight: 500; /* Or var(--font-weight-bold) if preferred */
 }
 
-.feedbackMessage {
-    text-align: center;
-    margin-bottom: calc(var(--spacing-unit) * 1.5);
-    padding: calc(var(--spacing-unit) * 0.75) var(--spacing-unit);
-    border-radius: var(--border-radius-small);
-    font-size: 0.9rem;
+/* Info Button for terms */
+.infoButton {
+    margin-left: var(--spacing-xs);
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.9em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5em;
+    height: 1.5em;
+    border-radius: 50%;
+}
+.infoButton:hover,
+.infoButton:focus {
+    background-color: rgba(var(--color-primary-rgb), 0.1);
+    outline: none;
 }
 
-.feedbackMessageError {
-    color: var(--color-error);
-    background-color: rgba(var(--color-error-rgb, 176, 0, 32), 0.1);
-    border: 1px solid var(--color-error);
-}
+/* Feedback messages will now use global classes: .feedback-message, .feedback-message-error, etc. from App.css */
+/* Remove .feedbackMessage, .feedbackMessageError, .feedbackMessageSuccess, .feedbackMessageInfo from here */
 
-.feedbackMessageSuccess {
-    color: var(--color-success);
-    background-color: rgba(46, 125, 50, 0.1);
-    border: 1px solid var(--color-success);
-}
-
-.feedbackMessageInfo {
-    color: var(--color-text-muted);
-    background-color: var(--color-secondary);
-    border: 1px solid var(--color-border);
-}
-
-.authMessage,
+.authMessage, /* If specific layout needed, otherwise could be a global alert style */
 .loadingMessage,
 .infoMessage {
-    padding: var(--spacing-unit);
+    padding: var(--spacing-md);
     text-align: center;
     color: var(--color-text-muted);
-    font-size: 0.9rem;
-    margin-bottom: var(--spacing-unit);
+    font-size: var(--font-size-small);
+    margin-bottom: var(--spacing-md);
+    background-color: var(--color-secondary); /* Example for info/loading */
+    border: 1px solid var(--color-border-light);
+    border-radius: var(--border-radius-small);
 }
 
 /* Section Styling */
 .inputsSection,
 .resultsGroup,
 .manageRecipesSection {
-    border: 1px solid var(--color-border);
-    padding: var(--main-section-padding); /* Using variable */
+    border: var(--border-default);
+    padding: var(--main-section-padding);
     border-radius: var(--border-radius-medium);
-    background-color: #fff;
+    background-color: var(--color-surface); /* Ensure it uses theme variable */
 }
 
-/* COMMON SECTION HEADING STYLE */
 .inputsSection h3,
 .resultsGroup h3,
 .manageRecipesSection h3,
 .stepsColumn h3 {
     margin-top: 0;
-    margin-bottom: calc(var(--spacing-unit) * 2);
-    font-size: 1.3rem;
+    margin-bottom: var(--spacing-lg);
+    font-size: var(--font-size-large); /* Use theme variable */
     color: var(--color-primary-darker);
     text-align: left;
-    border-bottom: 1px solid var(--color-border);
-    padding-bottom: var(--spacing-unit);
+    border-bottom: var(--border-default);
+    padding-bottom: var(--spacing-md);
 }
 
-/* Input Groups and Form Elements */
+/* Input Groups: General input styling comes from App.css */
+/* These .inputGroup styles are for layout within this component */
 .inputGroup {
-    margin-bottom: calc(var(--spacing-unit) * 1); /* Default tighter margin */
+    margin-bottom: var(--spacing-md);
 }
 
-.inputGroup label {
-    display: block;
-    margin-bottom: calc(var(--spacing-unit) * 0.5);
-    color: var(--color-text-muted);
-    font-weight: bold;
-    font-size: 0.9rem;
-}
-
-.inputGroup input[type="text"],
-.inputGroup input[type="number"],
-.inputGroup textarea,
-.inputGroup select {
-    width: 100%;
-    padding: calc(var(--spacing-unit) * 0.75); /* Reduced padding for inputs */
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-small);
-    font-family: var(--font-family-body);
-    font-size: 0.95rem; /* Slightly smaller font in inputs */
-    color: var(--color-text);
-    background-color: var(--color-surface);
-    box-sizing: border-box;
-    transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-}
-
-.inputGroup input[type="number"] {
-    text-align: right;
-}
-
-.inputGroup input:focus,
-.inputGroup textarea:focus,
-.inputGroup select:focus {
-    outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(var(--color-primary-rgb, 141, 110, 99), 0.25);
-}
-
-/* Two-column layout for the main "Inputs" section */
+/* Specific two-column layouts within RecipeCalculator sections */
 .inputsSection .inputGroup.twoColumn {
     display: grid;
     grid-template-columns: auto 1fr;
     align-items: center;
-    gap: calc(var(--spacing-unit) * 1.5); /* Slightly reduced gap */
+    gap: var(--spacing-lg);
 }
+.inputsSection .inputGroup.twoColumn label { margin-bottom: 0; text-align: left; padding-right: 0; }
+.inputsSection .inputGroup.twoColumn input[type="number"] { max-width: 120px; text-align: right; margin-left: auto; }
 
-.inputsSection .inputGroup.twoColumn label {
-    margin-bottom: 0;
-    text-align: left;
-    padding-right: 0;
-}
-
-.inputsSection .inputGroup.twoColumn input[type="number"] {
-    max-width: 100px;
-    text-align: right;
-    margin-left: auto;
-}
-
-/* Two-column layout for manageRecipesSection */
 .manageRecipesSection .inputGroup.twoColumn {
     display: grid;
-    grid-template-columns: minmax(140px, auto) 1fr; /* Slightly adjusted label column */
+    grid-template-columns: minmax(150px, auto) 1fr; /* Adjusted for potentially longer labels */
     align-items: center;
-    gap: var(--spacing-unit);
+    gap: var(--spacing-md);
 }
+.manageRecipesSection .inputGroup.twoColumn label { margin-bottom: 0; padding-right: var(--spacing-md); text-align: right; }
 
-.manageRecipesSection .inputGroup.twoColumn label {
-    margin-bottom: 0;
-    padding-right: var(--spacing-unit);
-    text-align: right;
-}
-
-.manageRecipesSection .inputGroup.twoColumn input,
-.manageRecipesSection .inputGroup.twoColumn textarea,
-.manageRecipesSection .inputGroup.twoColumn select {
-    max-width: none;
-}
 
 /* StepEditor specific input group styling for compactness and alignment */
 .stepItemEditor .inputGroup {
     margin-bottom: var(--step-item-input-group-margin-bottom);
 }
-
 .stepItemEditor .inputGroup.twoColumn {
     display: grid;
-    grid-template-columns: auto 1fr; /* Label auto, input's column takes rest */
+    grid-template-columns: auto 1fr;
     align-items: center;
     gap: var(--step-item-input-gap);
 }
-
 .stepItemEditor .inputGroup.twoColumn label {
     margin-bottom: 0;
     padding-right: var(--step-item-label-padding-right);
     text-align: left;
-    font-weight: normal;
+    font-weight: var(--font-weight-normal); /* Labels in steps might be less prominent */
     white-space: nowrap;
 }
-
 .stepItemEditor .inputGroup.twoColumn input[type="number"] {
-    max-width: var(--step-item-numeric-input-max-width); /* Use variable */
-    width: 100%; /* Fill its column in the grid, constrained by max-width */
-    margin-left: auto; /* Pushes the input field to the right of its column */
-    text-align: right; 
+    max-width: var(--step-item-numeric-input-max-width);
+    width: 100%;
+    margin-left: auto;
+    text-align: right;
 }
-/* Notes field in StepEditor - ensure it has enough space */
 .stepItemEditor .inputGroup textarea {
-    min-height: 50px; /* Example height */
+    min-height: 60px; /* Slightly more space for notes */
 }
 
 
 /* Recipe Management Specific Styling */
-.recipeManagementGroup {
-    margin-bottom: 0;
-    margin-top: 0;
-    padding-top: 0;
-    border-top: none;
-}
-
 .actionsGroup {
     display: flex;
-    gap: calc(var(--spacing-unit));
-    margin-top: calc(var(--spacing-unit) * 1.5);
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-lg);
     flex-wrap: wrap;
 }
-
-.buttonWithSpinner {
-    position: relative;
-}
-
-.buttonSpinner {
-    display: inline-block;
-    width: var(--spinner-size, 1em);
-    height: var(--spinner-size, 1em);
-    border: var(--spinner-border-size, 0.15em) solid var(--spinner-color-light, white);
-    border-top-color: var(--spinner-color, #8D6E63);
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-left: calc(var(--spacing-unit) * 1);
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-.mainActions button {
-    flex-grow: 1;
-    min-width: 130px;
-    padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 2);
-    font-size: 0.9rem;
-}
-
-.buttonDanger {
-    background-color: var(--color-error) !important;
-}
-
-.buttonDanger:hover {
-    background-color: darkred !important;
-}
-
-.buttonSecondary {
-    background-color: #6c757d !important;
-    color: white !important;
-}
-
-.buttonSecondary:hover {
-    background-color: #5a6268 !important;
-}
+/* .buttonWithSpinner and .buttonSpinner are now global in App.css */
+/* .mainActions button styling should come from global .btn and its variants */
+/* Remove .buttonDanger, .buttonSecondary from here. Apply .btn .btn-danger etc. in JSX */
 
 /* Results Group Styling */
-.resultsGroup {
-    padding: var(--main-section-padding); /* Using variable */
-    border: 1px solid var(--color-border);
-}
-
 .resultItem {
     display: flex;
     justify-content: space-between;
-    padding: calc(var(--spacing-unit) * 0.75) 0;
+    padding: var(--spacing-sm) 0;
     font-size: 1rem;
 }
-
 .resultItem.total {
-    font-weight: bold;
-    font-size: 1.1rem;
+    font-weight: var(--font-weight-bold);
+    font-size: 1.1rem; /* Could be var(--font-size-large) or similar */
     color: var(--color-primary-darker);
-    border-top: 1px solid var(--color-border);
-    margin-top: var(--spacing-unit);
-    padding-top: var(--spacing-unit);
+    border-top: var(--border-default);
+    margin-top: var(--spacing-md);
+    padding-top: var(--spacing-md);
 }
-
 .resultItem span:first-child {
     color: var(--color-text);
     font-weight: 500;
 }
-
 .resultItem span:last-child {
-    font-weight: bold;
+    font-weight: var(--font-weight-bold);
 }
 
 /* Steps Column (Right Column) */
 .stepsManagementSection {
-    margin-top: 0;
+    margin-top: 0; /* h3 provides top margin */
     width: 100%;
     box-sizing: border-box;
 }
 
 .stepItemEditor {
-    background-color: var(--color-surface-alt, #fdfdfd);
-    border: 1px solid var(--color-border);
-    padding: var(--step-item-padding); /* Using variable */
-    border-radius: var(--border-radius-small);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-    margin-bottom: var(--step-item-margin-bottom); /* Using variable */
+    background-color: var(--color-surface); /* Consistent surface color */
+    border: var(--border-default);
+    padding: var(--step-item-padding);
+    border-radius: var(--border-radius-medium); /* Consistent with other sections */
+    box-shadow: var(--box-shadow-soft);
+    margin-bottom: var(--step-item-margin-bottom);
 }
 
 .stepHeader {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--step-item-header-margin-bottom); /* Using variable */
+    margin-bottom: var(--step-item-header-margin-bottom);
 }
 
 .stepHeader h4 {
     margin: 0;
     display: flex;
     align-items: center;
-    gap: calc(var(--spacing-unit) * 0.75);
-    font-size: 1.05rem;
+    gap: var(--spacing-sm);
+    font-size: 1.05rem; /* Slightly smaller than section h3 */
     flex-grow: 1;
+    color: var(--color-text); /* Standard text color for step headers */
+    border-bottom: none; /* Remove potential double border if h4 inherits global h_ styles */
+    padding-bottom: 0;
 }
 
 .stepTypeSelect {
     flex-grow: 1;
-    max-width: 200px; /* Slightly reduced max-width */
-    font-size: 0.85rem; /* Slightly smaller font */
-    padding: calc(var(--spacing-unit) * 0.75); /* Reduced padding */
+    max-width: 220px; /* Allow a bit more space if needed */
+    font-size: 0.9rem;
+    padding: var(--spacing-sm); /* Use theme variable */
 }
 
-.removeStepBtn {
-    background-color: transparent;
-    color: var(--color-error);
-    border: 1px solid var(--color-error);
-    padding: calc(var(--spacing-unit) * 0.5) calc(var(--spacing-unit) * 0.75); /* Reduced padding */
-    font-size: 0.75rem; /* Smaller font */
-    border-radius: var(--border-radius-small);
-    cursor: pointer;
-    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
-}
+/* .removeStepBtn will now be <button className="btn btn-danger btn-small"> (example) */
+/* Add .btn-small or similar utility in App.css if needed for smaller buttons */
 
-.removeStepBtn:hover {
-    background-color: rgba(var(--color-error-rgb, 176, 0, 32), 0.1);
-}
-
-.removeStepBtn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.addStepButton {
-    display: block;
-    width: 100%;
-    margin-top: var(--spacing-unit);
-    padding: calc(var(--spacing-unit) * 1) calc(var(--spacing-unit) * 1.5); /* Slightly reduced padding */
-    font-size: 0.9rem; /* Slightly smaller font */
-}
+/* .addStepButton will now be <button className="btn btn-primary"> or .btn-secondary, full width via wrapper div if needed */
 
 .sortableStepDragActive {
-    background-color: rgba(var(--color-primary-rgb, 141, 110, 99), 0.1);
+    background-color: rgba(var(--color-primary-rgb), 0.1);
     border: 1px dashed var(--color-primary-darker);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Or var(--box-shadow-medium) */
 }
 
-/* Base Templates Section */
+/* Base Templates Section - Styling remains largely specific to this component's layout */
 .baseTemplatesSection {
-    background-color: var(--color-surface-alt, #fdfdfd);
-    border: 1px solid var(--color-border);
-    padding: calc(var(--spacing-unit) * 2); /* Kept original padding for this section, can be changed to --main-section-padding if desired */
+    background-color: var(--color-surface); /* Changed from alt to be consistent with other sections */
+    border: var(--border-default);
+    padding: var(--spacing-lg);
     border-radius: var(--border-radius-medium);
-    margin-bottom: calc(var(--spacing-unit) * 2.5);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    margin-bottom: var(--spacing-xl);
+    box-shadow: var(--box-shadow-soft);
 }
-
-.baseTemplatesSection h3 {
+.baseTemplatesSection h3 { /* Consistent with other section headers */
     margin-top: 0;
-    margin-bottom: calc(var(--spacing-unit) * 1.5);
-    font-size: 1.3rem;
+    margin-bottom: var(--spacing-lg);
+    font-size: var(--font-size-large);
     color: var(--color-primary-darker);
-    border-bottom: 1px solid var(--color-border);
-    padding-bottom: var(--spacing-unit);
+    border-bottom: var(--border-default);
+    padding-bottom: var(--spacing-md);
 }
-
-/* New style for the introductory text in template section */
 .templateIntroText {
     font-size: 0.95rem;
     color: var(--color-text-muted);
-    margin-bottom: calc(var(--spacing-unit) * 2);
-    line-height: 1.6;
+    margin-bottom: var(--spacing-lg);
+    line-height: var(--line-height-base);
 }
-
-/* New container for the 3-column card layout */
 .templateCardsContainer {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Responsive card layout */
-    gap: calc(var(--spacing-unit) * 2);
-    padding: 0; 
-    list-style: none; 
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: var(--spacing-lg);
 }
-
-/* New style for individual template cards */
 .templateCard {
     background-color: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--border-radius-small);
-    padding: calc(var(--spacing-unit) * 1.5);
-    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    border: var(--border-default);
+    border-radius: var(--border-radius-medium); /* Use medium for cards */
+    padding: var(--spacing-lg);
+    box-shadow: var(--box-shadow-soft);
     display: flex;
     flex-direction: column;
-    justify-content: space-between; 
-    transition: box-shadow 0.2s ease-in-out;
+    justify-content: space-between;
+    transition: box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
+    cursor: pointer;
 }
-
 .templateCardActive {
     border-color: var(--color-primary-darker);
-    box-shadow: 0 3px 10px rgba(var(--color-primary-rgb, 141, 110, 99), 0.4);
-    /* Make background more distinct, e.g., a light primary color */
-    background-color: rgba(var(--color-primary-rgb, 141, 110, 99), 0.1); /* Light brownish tint */
-    /* Or a more saturated version of secondary if you define one */
-    /* background-color: #e0e0e0; /* Example: a slightly darker grey */
+    box-shadow: var(--box-shadow-medium), 0 0 0 2px var(--color-primary-darker); /* Highlight active */
+    background-color: rgba(var(--color-primary-rgb), 0.05); /* Subtle tint */
 }
-
-
-
 .templateCard:hover {
-    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    box-shadow: var(--box-shadow-medium);
+    border-color: var(--color-primary);
 }
-
-.templateCardContent {
-    margin-bottom: var(--spacing-unit); 
-}
-
-.templateCard h4 { 
+.templateCardContent { margin-bottom: var(--spacing-md); }
+.templateCard h4 {
     margin-top: 0;
-    margin-bottom: calc(var(--spacing-unit) * 0.75);
-    font-size: 1.1rem; 
+    margin-bottom: var(--spacing-sm);
+    font-size: 1.1rem;
     color: var(--color-primary);
 }
-
-.templateCard p { 
-    font-size: 0.85rem; 
+.templateCard p {
+    font-size: var(--font-size-small);
     color: var(--color-text-muted);
-    margin-bottom: var(--spacing-unit);
+    margin-bottom: var(--spacing-md);
     line-height: 1.5;
-    flex-grow: 1; 
+    flex-grow: 1;
+}
+/* .templateCardButton will now be <button className="btn btn-primary"> or similar global class */
+/* In RecipeCalculator.module.css */
+.dragHandle {
+  display: inline-flex; /* Or flex */
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  margin-right: var(--spacing-sm);
+  cursor: grab;
+  color: var(--color-text-muted);
+  border: 1px solid transparent; /* Optional: for visual feedback on hover/active */
+  border-radius: var(--border-radius-small);
 }
 
-.templateCardButton {
-    width: 100%;
-    padding: calc(var(--spacing-unit) * 0.75) var(--spacing-unit); 
-    font-size: 0.9rem;
-    margin-top: auto; 
+.dragHandle:hover {
+  background-color: var(--color-secondary);
 }
 
-
-
-/* Responsive adjustments */
+.dragHandle:active {
+  cursor: grabbing;
+  background-color: var(--color-border-light);
+}
+/* Responsive adjustments (largely the same, ensure variables are used) */
 @media (max-width: 1000px) {
-    .recipeCalculatorLayout {
-        flex-direction: column;
-        gap: calc(var(--spacing-unit) * 2);
-    }
-
-    .recipeDetailsColumn,
-    .stepsColumn {
-        min-width: 100%;
-        flex-basis: auto;
-    }
-
-    .resultsGroup {
-        order: initial;
-    }
-
-    .inputsSection .inputGroup.twoColumn label,
-    .manageRecipesSection .inputGroup.twoColumn label {
-        text-align: left;
-    }
+    .recipeCalculatorLayout { flex-direction: column; gap: var(--spacing-lg); }
+    .recipeDetailsColumn, .stepsColumn { min-width: 100%; flex-basis: auto; }
 }
-
-@media (max-width: 900px) { 
-    .templateCardsContainer { /* For 2 columns on medium screens */
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    }
+@media (max-width: 900px) {
+    .templateCardsContainer { grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 }
-
-
 @media (max-width: 600px) {
-    .recipeCalculatorLayout {
-        padding: calc(var(--spacing-unit) * 1.5);
-    }
-
-    .mainTitle { /* This class is no longer in RecipeCalculator.module.css if moved to App.css */
-        /* font-size: 1.7rem; */ 
-    }
-
-    .templateCardsContainer { /* For 1 column on small screens */
-        grid-template-columns: 1fr;
-    }
-
+    .recipeCalculatorLayout { padding: var(--spacing-md); }
     .inputsSection .inputGroup.twoColumn,
     .manageRecipesSection .inputGroup.twoColumn,
     .stepItemEditor .inputGroup.twoColumn {
-        grid-template-columns: 1fr; /* Stack label and input */
+        grid-template-columns: 1fr;
     }
-
     .inputsSection .inputGroup.twoColumn label,
     .manageRecipesSection .inputGroup.twoColumn label,
     .stepItemEditor .inputGroup.twoColumn label {
         text-align: left;
-        margin-bottom: calc(var(--spacing-unit) * 0.25); /* Add margin back for stacked layout */
+        margin-bottom: var(--spacing-xs);
         padding-right: 0;
-        white-space: normal; /* Allow label to wrap if needed */
+        white-space: normal;
     }
-    
     .stepItemEditor .inputGroup.twoColumn input[type="number"] {
-        max-width: none; /* Allow full width when stacked */
-        width: 100%;
-        margin-left: 0; /* Reset margin for stacked layout */
+        max-width: none; width: 100%; margin-left: 0;
     }
-
-    .inputGroup input[type="number"] { /* General numeric inputs in other sections */
-        max-width: none;
-        margin-left: 0;
+    .inputsSection .inputGroup.twoColumn input[type="number"] { /* Ensure this allows full width too on mobile */
+        max-width: none; width: 100%; margin-left: 0;
     }
-
-    .stepHeader h4 {
-        flex-direction: column;
-        align-items: flex-start;
-        font-size: 1rem;
-    }
-
-    .stepTypeSelect {
-        width: 100%;
-        max-width: none;
-        margin-top: calc(var(--spacing-unit) * 0.75);
-    }
-
-    .mainActions button {
-        flex-basis: 100%;
-    }
+    .stepHeader h4 { flex-direction: column; align-items: flex-start; font-size: 1rem; }
+    .stepTypeSelect { width: 100%; max-width: none; margin-top: var(--spacing-sm); }
 }

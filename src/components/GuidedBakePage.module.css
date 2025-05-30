@@ -1,0 +1,162 @@
+/* src/components/GuidedBakePage.module.css */
+
+.guidedBakePageContainer {
+  padding: var(--spacing-lg);
+  max-width: 800px; /* Example max-width for focused content */
+  margin: var(--spacing-lg) auto;
+  background-color: var(--color-surface);
+  border-radius: var(--border-radius-medium);
+  border: var(--border-default);
+  box-shadow: var(--box-shadow-medium);
+}
+
+.pageHeader {
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-md);
+  border-bottom: var(--border-default);
+}
+.pageHeader h1 { /* Inherits from App.css, override if needed */
+  margin-top: 0;
+  margin-bottom: var(--spacing-xs);
+}
+.pageHeader p { /* For bake status etc. */
+  font-size: var(--font-size-small);
+  color: var(--color-text-muted);
+  margin-bottom: 0;
+}
+
+.currentStepSection {
+  margin-bottom: var(--spacing-xl);
+  padding: var(--spacing-lg);
+  background-color: rgba(var(--color-primary-rgb), 0.05); /* Subtle highlight */
+  border-radius: var(--border-radius-small);
+  border: 1px solid rgba(var(--color-primary-rgb), 0.1);
+}
+.currentStepSection h2 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-md);
+  color: var(--color-primary-darker);
+}
+.currentStepSection p {
+  margin-bottom: var(--spacing-sm);
+}
+.currentStepSection .instructions {
+    font-size: 1.05rem; /* Slightly larger for readability */
+    line-height: 1.7;
+}
+.currentStepSection .details { /* For duration, temp etc. */
+    font-size: var(--font-size-small);
+    color: var(--color-text-muted);
+}
+.stepTimestamp {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    margin-top: var(--spacing-md);
+}
+
+
+.timerSection {
+  margin: var(--spacing-xl) 0;
+  padding: var(--spacing-lg);
+  border: var(--border-default);
+  border-radius: var(--border-radius-medium);
+  text-align: center;
+}
+.timerSection h3 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text);
+}
+.timerDisplay {
+  font-size: 2.5em; /* Large timer display */
+  font-weight: var(--font-weight-bold);
+  color: var(--color-primary-darker);
+  margin-bottom: var(--spacing-md);
+}
+.timerDisplay.active { color: var(--color-success); }
+.timerDisplay.paused { color: var(--color-accent); }
+
+.notesSection {
+  margin: var(--spacing-xl) 0;
+}
+.notesSection label { /* Uses global label style from App.css */
+  margin-bottom: var(--spacing-sm);
+}
+.notesSection textarea { /* Uses global textarea style from App.css */
+  min-height: 80px;
+}
+
+.nextStepPreview {
+  margin-top: var(--spacing-md);
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: var(--font-size-small);
+  padding-left: var(--spacing-lg); /* Indent slightly */
+  border-left: 3px solid var(--color-border);
+}
+
+.actionsSection {
+  margin-top: var(--spacing-xl);
+  padding-top: var(--spacing-xl);
+  border-top: var(--border-default);
+  display: flex;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+  justify-content: center; /* Center buttons if they don't fill width */
+}
+/* Buttons in actionsSection will use .btn and its variants from App.css */
+
+.bakeStatusMessage { /* For "Bake Complete!", "Bake Abandoned" messages */
+    padding: var(--spacing-xl);
+    text-align: center;
+    border-radius: var(--border-radius-medium);
+    margin-bottom: var(--spacing-lg);
+}
+.bakeStatusMessage.completed {
+    background-color: rgba(var(--color-success-rgb), 0.1);
+    color: var(--color-success);
+    border: 1px solid var(--color-success);
+}
+.bakeStatusMessage.abandoned {
+    background-color: rgba(var(--color-error-rgb), 0.1);
+    color: var(--color-error);
+    border: 1px solid var(--color-error);
+}
+.bakeStatusMessage h2 { margin-top: 0; }
+
+/* src/components/GuidedBakePage.module.css */
+
+/* ... (your existing styles for .guidedBakePageContainer, .pageHeader, .currentStepSection, .timerSection, etc.) ... */
+
+.sAndFTimerSection {
+  margin-top: var(--spacing-lg);
+  padding: var(--spacing-md);
+  border: 1px dashed var(--color-primary-lighter); /* Dashed border to differentiate */
+  border-radius: var(--border-radius-medium);
+  background-color: rgba(var(--color-primary-rgb), 0.03); /* Very subtle background */
+  text-align: center;
+}
+
+.sAndFTimerSection h3 {
+  margin-top: 0;
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-primary-darker);
+  font-size: 1.1rem; /* Slightly smaller than main timer h3 if one exists */
+}
+
+.sAndFTimerSection p {
+  margin-bottom: var(--spacing-xs);
+}
+
+.sAndFAlert { /* Style for the feedback message specifically for S&F */
+  margin-top: var(--spacing-sm);
+  /* It will use global .feedback-message .feedback-message-info for base styling */
+}
+
+/* Ensure .timerDisplay and other common classes are styled if needed here or globally */
+.timerDisplay.active { /* You might have this from main timer */
+  color: var(--color-success);
+}
+.timerDisplay.paused { /* You might have this from main timer */
+  color: var(--color-accent);
+}

@@ -17,26 +17,11 @@ import { SortableStepItem } from './SortableStepItem';
 import StepEditor from './StepEditor';
 import styles from './RecipeCalculator.module.css';
 
-/**
- * @param {object} props
- * @param {Array<object>} props.recipeSteps
- * @param {Array<object>} props.predefinedSteps
- * @param {function(number, string, any): void} props.onStepChange
- * @param {function(number): void} props.onDeleteStep
- * @param {function(): void} props.onAddStep
- * @param {function(any): void} props.onDragEnd
- * @param {boolean} props.isLoadingPredefinedSteps
- * @param {boolean} props.isSaving
- * @param {string | null} props.bulkFermentStepId
- * @param {string | null} props.levainStepId
- * @param {function(object): string} props.getStepDnDId
- * @param {boolean} props.isInTemplateMode
- */
 function StepsColumn({
     recipeSteps,
     predefinedSteps,
     onStepChange,
-    onDeleteStep,
+    onDeleteStep, // This is the prop passed from RecipeCalculator
     onAddStep,
     onDragEnd,
     isLoadingPredefinedSteps,
@@ -51,10 +36,15 @@ function StepsColumn({
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
+    // DEBUG: Check the onDeleteStep prop when StepsColumn renders or re-renders
+    // This might log many times if recipeSteps changes often.
+    // console.log('StepsColumn: onDeleteStep prop is type:', typeof onDeleteStep);
+
+
     const addStepButtonText = () => {
         if (isLoadingPredefinedSteps) return 'Loading types...';
         if (predefinedSteps.length === 0 && !isLoadingPredefinedSteps) return 'No Step Types Loaded';
-        return '⊕ Add Step'; // Unicode plus icon
+        return '⊕ Add Step';
     };
 
     return (
@@ -64,31 +54,38 @@ function StepsColumn({
                 <SortableContext items={recipeSteps.map(s => getStepDnDId(s))} strategy={verticalListSortingStrategy}>
                     <div className={styles.stepsManagementSection}>
                         {isLoadingPredefinedSteps && <p className={styles.loadingMessage}>Loading step types...</p>}
-                        {recipeSteps.map((step, index) => (
-                            <SortableStepItem key={getStepDnDId(step)} id={getStepDnDId(step)}>
-                                <StepEditor
-                                    step={step}
-                                    index={index}
-                                    predefinedSteps={predefinedSteps}
-                                    onStepChange={onStepChange}
-                                    onDeleteStep={onDeleteStep}
-                                    isSaving={isSaving}
-                                    isInTemplateMode={isInTemplateMode} // Propagated
-                                    bulkFermentStepId={bulkFermentStepId}
-                                    levainStepId={levainStepId}
-                                />
-                            </SortableStepItem>
-                        ))}
-                        {/* Updated: Conditionally render the "Add Step" button; hide in template mode */}
+                        {recipeSteps.map((step, index) => {
+                            // DEBUG: Check the onDeleteStep prop specifically where it's passed to StepEditor
+                            if (index === 0) { // Log only for the first item to avoid flooding console, or remove condition for all
+                                console.log(`StepsColumn mapping step "${step.step_name}": onDeleteStep prop passed to StepEditor is type:`, typeof onDeleteStep);
+                            }
+                            return (
+                                <SortableStepItem key={getStepDnDId(step)} id={getStepDnDId(step)}>
+                                    <StepEditor
+                                        step={step}
+                                        index={index}
+                                        predefinedSteps={predefinedSteps}
+                                        onStepChange={onStepChange}
+                                        onDeleteStep={onDeleteStep} // Prop being passed
+                                        isSaving={isSaving}
+                                        isInTemplateMode={isInTemplateMode}
+                                        bulkFermentStepId={bulkFermentStepId}
+                                        levainStepId={levainStepId}
+                                        // getStepDnDId is not directly used by StepEditor, but by SortableStepItem
+                                    />
+                                </SortableStepItem>
+                            );
+                        })}
                         {!isInTemplateMode && (
                             <button
                                 type="button"
                                 onClick={onAddStep}
-                                disabled={isLoadingPredefinedSteps || predefinedSteps.length === 0 || isSaving} // Disabled only by other conditions
-                                className={`${styles.addStepButton} ${styles.buttonWithSpinner}`}
+                                disabled={isLoadingPredefinedSteps || predefinedSteps.length === 0 || isSaving}
+                                className="btn btn-secondary buttonWithSpinner"
+                                style={{ width: '100%', marginTop: 'var(--spacing-lg)' }}
                             >
                                 {addStepButtonText()}
-                                {isSaving && <span className={styles.buttonSpinner}></span>}
+                                {isSaving && <span className="buttonSpinner"></span>}
                             </button>
                         )}
                     </div>

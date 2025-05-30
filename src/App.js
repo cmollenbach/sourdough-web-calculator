@@ -4,10 +4,13 @@ import { BrowserRouter as Router, Routes, Route, NavLink, Navigate } from 'react
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
 import RecipeCalculator from './RecipeCalculator';
-import PublicRecipeCalculatorView from './components/PublicRecipeCalculatorView'; // Import the new component
+import PublicRecipeCalculatorView from './components/PublicRecipeCalculatorView';
 import GuidedBakePage from './components/GuidedBakePage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { DataProvider } from './contexts/DataContext';
+// Import ToastProvider and ToastContainer
+import { ToastProvider } from './contexts/ToastContext'; // Make sure this path is correct
+import ToastContainer from './components/common/ToastContainer'; // Make sure this path is correct
 import './App.css';
 
 function AppContent() {
@@ -23,7 +26,6 @@ function AppContent() {
                 <ul className="main-nav-list">
                     <li className="nav-item-left">
                         <NavLink
-                            // If not logged in, main "Calculator" link could also go to public view or be hidden/changed
                             to={token ? "/" : "/public-calculator"}
                             className={({ isActive }) => isActive ? "active" : ""}
                         >
@@ -98,10 +100,13 @@ function App() {
         <Router>
             <AuthProvider>
                 <DataProvider>
-                    <div className="App">
-                        <h1 className="app-title">Sourdough Recipe Calculator</h1>
-                        <AppContent />
-                    </div>
+                    <ToastProvider> {/* Wrap with ToastProvider */}
+                        <div className="App">
+                            <h1 className="app-title">Sourdough Recipe Calculator</h1>
+                            <AppContent />
+                            <ToastContainer /> {/* Render ToastContainer here, inside App div but outside AppContent */}
+                        </div>
+                    </ToastProvider>
                 </DataProvider>
             </AuthProvider>
         </Router>

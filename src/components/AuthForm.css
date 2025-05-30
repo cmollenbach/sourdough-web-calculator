@@ -5,16 +5,16 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 70vh;
-  padding: calc(var(--spacing-unit) * 2);
+  min-height: 70vh; /* Or adjust as needed */
+  padding: var(--spacing-lg);
 }
 
 .auth-form {
   background-color: var(--color-surface);
-  padding: calc(var(--spacing-unit) * 4);
+  padding: var(--spacing-xl); /* Use theme variable */
   border-radius: var(--border-radius-medium);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 1px solid var(--color-border);
+  box-shadow: var(--box-shadow-medium);
+  border: var(--border-default);
   width: 100%;
   max-width: 400px;
   box-sizing: border-box;
@@ -23,54 +23,49 @@
 .auth-form h2 {
   text-align: center;
   margin-top: 0;
-  margin-bottom: calc(var(--spacing-unit) * 3);
-  color: var(--color-text);
+  margin-bottom: var(--spacing-xl); /* Use theme variable */
+  color: var(--color-text); /* Uses global h2 styles from App.css now */
 }
 
-.input-group {
-  margin-bottom: calc(var(--spacing-unit) * 2);
+.input-group { /* This class is also in RecipeCalculator.module.css, consider if it can be global or needs to be distinct */
+  margin-bottom: var(--spacing-lg); /* Use theme variable */
 }
 
+/* Input fields will inherit base styles from App.css */
+/* .auth-form input[type="email"], etc. can be removed if App.css covers it, or kept for minor overrides */
 .auth-form input[type="email"],
 .auth-form input[type="password"],
 .auth-form input[type="text"] {
-  text-align: left; /* Correction: Align text to the left */
-  margin-bottom: calc(var(--spacing-unit) * 2);
-  /* width: 100% and box-sizing: border-box are inherited from App.css */
+  /* Specific margin for auth form if different from global input margin */
+  margin-bottom: var(--spacing-lg);
 }
 
-.auth-form button[type="submit"] {
-  width: 100%;
-  padding: calc(var(--spacing-unit) * 1.5) calc(var(--spacing-unit) * 2);
-  margin-top: var(--spacing-unit);
-}
+/* Submit button will use .btn .btn-primary from App.css, applied in JSX */
+/* .auth-form button[type="submit"] { ... } can be removed */
 
+/* .error-message - can now use global .feedback-message .feedback-message-error */
+/* Or keep for specific layout if needed, but use theme variables for colors/padding */
 .error-message {
-  color: var(--color-error);
-  background-color: rgba(var(--color-error-rgb, 176, 0, 32), 0.1);
-  border: 1px solid var(--color-error);
-  padding: var(--spacing-unit) calc(var(--spacing-unit) * 1.5);
+  /* These properties are now in .feedback-message-error in App.css */
+  /* color: var(--color-error);
+  background-color: rgba(var(--color-error-rgb), 0.1);
+  border: 1px solid var(--color-error); */
+  padding: var(--spacing-md); /* Ensure it uses theme variable */
   border-radius: var(--border-radius-small);
-  margin-bottom: calc(var(--spacing-unit) * 2);
+  margin-bottom: var(--spacing-lg);
   text-align: center;
-  font-size: 0.9rem;
+  font-size: var(--font-size-small);
 }
+
 
 .auth-form .form-link {
   display: block;
   text-align: center;
-  margin-top: calc(var(--spacing-unit) * 2.5);
+  margin-top: var(--spacing-xl);
   color: var(--color-text-muted);
-  font-size: 0.9rem;
+  font-size: var(--font-size-small);
 }
 
-.auth-form .form-link a {
-  color: var(--color-primary);
-  font-weight: bold;
-  text-decoration: none;
-}
-
-.auth-form .form-link a:hover {
-  text-decoration: underline;
-  color: var(--color-primary-darker);
-}
+/* Link styling comes from global 'a' styles in App.css */
+/* .auth-form .form-link a { ... } */
+/* .auth-form .form-link a:hover { ... } */
