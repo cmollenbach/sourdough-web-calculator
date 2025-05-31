@@ -214,6 +214,23 @@
   font-size: var(--font-size-small); /* Make info text smaller */
 }
 
+.resultsTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.resultsTable th,
+.resultsTable td {
+    padding: 0.5em 0.75em;
+}
+
+.resultsTable td:not(:first-child),
+.resultsTable th:not(:first-child) {
+    text-align: right;
+    min-width: 5em; /* Adjust as needed */
+    /* width: 7em;   Uncomment for fixed width */
+}
+
 /* Specific class for the S&F countdown timer text */
 .sfTimerDisplay {
     font-size: 1.6em; /* Reduced from 1.8em, ensure this class is used in JSX */

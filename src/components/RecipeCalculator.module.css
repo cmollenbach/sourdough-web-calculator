@@ -429,38 +429,35 @@
 }
 
 .ingredientRow {
-  display: grid;
-  grid-template-columns: 1fr auto auto; /* Ingredient select | Percentage input | Remove button */
-  gap: var(--spacing-sm);
+  display: flex;
   align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+  flex-wrap: nowrap;
 }
 
-.ingredientSelect {
-  /* You might have global select styles in App.css. Add specific overrides here if needed. */
-  /* Example: */
-  padding: var(--spacing-sm);
-  border: var(--border-default);
-  border-radius: var(--border-radius-small);
-  background-color: var(--color-surface);
-  color: var(--color-text);
-  font-size: 0.95rem;
-  /* flex-grow: 1; */ /* If you want it to take available space in the grid column */
+.flourSelect {
+    flex: 1 1 0;
+    min-width: 100px; /* Minimum width for select */
+    max-width: 100%;
 }
 
-.percentageInput {
-  /* You might have global input[type=number] styles. Add specific overrides here if needed. */
-  /* Example: */
-  padding: var(--spacing-sm);
-  border: var(--border-default);
-  border-radius: var(--border-radius-small);
-  background-color: var(--color-surface);
-  color: var(--color-text);
-  font-size: 0.95rem;
-  max-width: 70px; /* Adjust as needed */
-  text-align: right;
+.inputNumberCompact {
+   max-width: var(--step-item-numeric-input-max-width, 100px);  
+  width: 2.5em;         /* Match your step card input width */
+    min-width: 2.5em;
+    text-align: right;
+    box-sizing: border-box;
+    padding-right: 0.3em;
 }
-/* (End of new styles for Stage Ingredients section) */
 
+.btnIconSmall {
+    flex: 0 0 auto;
+    padding: 0.2em 0.5em;
+    font-size: 1em;
+    line-height: 1;
+    margin-left: 0.25em;
+}
 
 /* Responsive adjustments (largely the same, ensure variables are used) */
 /* ... (rest of your existing media queries and styles) ... */
@@ -481,4 +478,27 @@
         justify-self: flex-end; /* Example: align remove button to the right if stacked */
         margin-top: var(--spacing-xs);
     }
+}
+
+/* Results Table Styling */
+.resultsTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.resultsTable th,
+.resultsTable td {
+    padding: 0.5em 0.75em;
+}
+
+.resultsTable th:not(:first-child),
+.resultsTable td:not(:first-child) {
+    text-align: center;
+    min-width: 5em;
+    /* width: 7em;   Uncomment for fixed width */
+}
+
+.resultsTable th:first-child,
+.resultsTable td:first-child {
+    text-align: left;
 }

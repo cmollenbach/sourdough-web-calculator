@@ -20,22 +20,23 @@ import styles from './RecipeCalculator.module.css';
 function StepsColumn({
     recipeSteps,
     predefinedSteps,
-    availableIngredients, // <<< NEW PROP from RecipeCalculator
+    availableIngredients,
     onStepChange,
     onDeleteStep,
     onAddStep,
     onDragEnd,
-    isLoadingPredefinedSteps, // This prop might represent combined loading state from RecipeCalculator
+    isLoadingPredefinedSteps,
     isSaving,
-    // Specific step type IDs to be passed to StepEditor
     levainStepId,
     bulkFermentStepId,
-    mixFinalDoughStepId, // <<< NEW PROP from RecipeCalculator
-    poolishBuildStepId,  // <<< NEW PROP from RecipeCalculator
-    bigaBuildStepId,     // <<< NEW PROP from RecipeCalculator
-    // ... any other specific step type IDs you might have ...
+    mixFinalDoughStepId,
+    poolishBuildStepId,
+    bigaBuildStepId,
+    soakerPrepStepId,
+    scaldPrepStepId,
     isInTemplateMode,
-    getStepDnDId
+    getStepDnDId,
+    onFlourMixChange,
 }) {
     const sensors = useSensors(
         useSensor(PointerSensor),
@@ -43,7 +44,6 @@ function StepsColumn({
     );
 
     const addStepButtonText = () => {
-        // isLoadingPredefinedSteps might now cover loading of ingredients too if combined in RecipeCalculator
         if (isLoadingPredefinedSteps) return 'Loading types...';
         if (predefinedSteps.length === 0 && !isLoadingPredefinedSteps) return 'No Step Types Loaded';
         return '⊕ Add Step';
@@ -55,7 +55,7 @@ function StepsColumn({
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
                 <SortableContext items={recipeSteps.map(s => getStepDnDId(s))} strategy={verticalListSortingStrategy}>
                     <div className={styles.stepsManagementSection}>
-                        {isLoadingPredefinedSteps && ( // This could be a combined loading state
+                        {isLoadingPredefinedSteps && (
                             <p className={styles.loadingMessage}>Loading essential data...</p>
                         )}
                         {recipeSteps.map((step, index) => {
@@ -65,19 +65,18 @@ function StepsColumn({
                                         step={step}
                                         index={index}
                                         predefinedSteps={predefinedSteps}
-                                        availableIngredients={availableIngredients} // <<< PASSING PROP
+                                        availableIngredients={availableIngredients}
                                         onStepChange={onStepChange}
                                         onDeleteStep={onDeleteStep}
                                         isSaving={isSaving}
                                         isInTemplateMode={isInTemplateMode}
-                                        // Pass all relevant step IDs
                                         levainStepId={levainStepId}
                                         bulkFermentStepId={bulkFermentStepId}
-                                        mixFinalDoughStepId={mixFinalDoughStepId} // <<< PASSING PROP
-                                        poolishBuildStepId={poolishBuildStepId}   // <<< PASSING PROP
-                                        bigaBuildStepId={bigaBuildStepId}       // <<< PASSING PROP
-                                        // ... pass other specific step IDs ...
-                                        dndListeners={undefined} // Listeners are passed to SortableStepItem which handles it
+                                        mixFinalDoughStepId={mixFinalDoughStepId}
+                                        poolishBuildStepId={poolishBuildStepId}
+                                        bigaBuildStepId={bigaBuildStepId}
+                                        dndListeners={undefined}
+                                        onFlourMixChange={onFlourMixChange}
                                     />
                                 </SortableStepItem>
                             );

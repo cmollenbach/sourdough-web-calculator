@@ -93,8 +93,19 @@
   --toast-text-light: var(--color-text-light); /* For toasts with dark backgrounds */
   --toast-box-shadow: var(--box-shadow-medium);
   --toast-border-radius: var(--border-radius-small);
-}
 
+  /* Ingredient Selector Variables */
+  --ingredient-select-min-width: 100px;  /* Minimum width for select */
+  --ingredient-select-max-width: 100px;  /* Maximum width for select */
+  --ingredient-pct-width: 60px;          /* Enough for 3 digits + padding */
+  --ingredient-btn-width: 16px;          /* Smaller button size */
+}
+.welcome-message {
+    margin-bottom: 1em;
+    font-size: 1.1em;
+    color: var(--color-text-muted, #666);
+    text-align: center;
+}
 /* Global Resets and Body Styling */
 body {
   margin: 0;
@@ -129,7 +140,7 @@ body {
   font-weight: var(--font-weight-bold);
 }
 
-/* Navigation Styling (largely as you had it, ensuring variables) */
+/* Navigation Styling */
 nav {
   background-color: var(--color-surface);
   padding: var(--spacing-sm) 0;
@@ -147,51 +158,105 @@ nav ul.main-nav-list {
   min-height: 40px;
 }
 
-.nav-item-center {
-  text-align: center;
-  flex-grow: 1;
-}
-
+.nav-item-left,
 .nav-item-right {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
 }
 
-.nav-item-left a,
-.nav-item-center span,
-.nav-item-right a,
-.nav-item-right button.btn-nav-logout { /* More specific class for logout */
+/* Unified nav-link style for all links and nav buttons */
+.nav-link,
+.nav-item-right button,
+.active-bakes-label {
+  color: var(--color-link);
   text-decoration: none;
   font-weight: var(--font-weight-bold);
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--border-radius-small);
-  transition: color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+  background: none;
+  border: none;
+  transition: color 0.2s, background-color 0.2s;
   display: inline-flex;
   align-items: center;
+  cursor: pointer;
+  font-size: 1em;
 }
 
-.nav-item-left a,
-.nav-item-right a {
-  color: var(--color-link);
-}
-
-.nav-item-left a:hover,
-.nav-item-left a.active,
-.nav-item-right a:hover,
-.nav-item-right a.active {
+/* Active and hover states */
+.nav-link.active,
+.nav-link:active,
+.nav-link:hover,
+.nav-item-right button:hover,
+.active-bakes-label:hover {
   color: var(--color-link-hover);
-  background-color: transparent;
-  box-shadow: none;
+  background-color: var(--color-secondary);
 }
 
-.nav-item-center span {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-small);
-  font-weight: var(--font-weight-normal);
+/* Logout button specific (inherits nav-link styles) */
+.btn-nav-logout {
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  font-size: 0.95em;
   padding: var(--spacing-sm) var(--spacing-md);
 }
+.btn-nav-logout:hover {
+  background-color: var(--color-primary);
+  color: var(--color-surface);
+  border-color: var(--color-primary);
+}
 
+/* Remove old nav-item-center and redundant selectors */
+.nav-item-center {
+  display: none;
+}
+
+.active-bakes-label {
+    background: none;
+    color: var(--color-success, #2E7D32); /* Use your green variable or fallback */
+    font-weight: var(--font-weight-bold);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--border-radius-small);
+    border: none;
+    transition: color 0.2s;
+    cursor: pointer;
+}
+
+.active-bakes-label:hover,
+.active-bakes-label:focus {
+    color: #388e3c; /* A darker green on hover/focus */
+    background: none;
+}
+
+.nav-item-active-bakes {
+  position: relative;
+}
+
+.active-bakes-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 220px;
+  background: var(--color-surface, #fff);
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: var(--border-radius-small, 4px);
+  box-shadow: var(--box-shadow-soft, 0 2px 6px rgba(0,0,0,0.08));
+  z-index: 100;
+  margin-top: 0.25em;
+  padding: 0.5em 0;
+  list-style: none;
+}
+
+.active-bakes-dropdown li {
+  padding: 0.5em 1em;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.active-bakes-dropdown li:hover {
+  background: var(--color-secondary, #f5f5f5);
+}
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-family-headings);
@@ -406,18 +471,24 @@ main {
 }
 
 .btn-small {
-  padding: var(--spacing-xs) var(--spacing-sm); /* Smaller padding */
-  font-size: var(--font-size-small);          /* Smaller font */
-  letter-spacing: 0.25px;                     /* Adjust letter spacing if needed */
-  /* You might not want uppercase for small buttons, or keep it */
-  /* text-transform: none; */
+  padding: 0 var(--spacing-xs);
+  font-size: 0.75em;
+  min-width: var(--ingredient-btn-width);
+  height: var(--ingredient-btn-width);
 }
 
-/* If you need an even smaller/icon-like button */
 .btn-icon {
-  padding: var(--spacing-xs);
-  font-size: var(--font-size-small); /* Or even smaller if the icon is the main content */
-  line-height: 1; /* Helps center icon-only content */
+  width: var(--ingredient-btn-width);
+  min-width: var(--ingredient-btn-width);
+  max-width: var(--ingredient-btn-width);
+  height: var(--ingredient-btn-width);
+  padding: 0;
+  font-size: 0.9em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  line-height: 1;
 }
 .btn-icon.btn-small { /* Combine if needed */
     padding: var(--spacing-xs);
@@ -474,142 +545,5 @@ main {
 .modal-body {
   margin-bottom: var(--spacing-lg);
   line-height: var(--line-height-base);
-  font-size: 1rem; /* Slightly smaller than base for modal content if desired */
+  font-size: 1rem; /* Slightly larger for modal content */
 }
-
-.modal-footer {
-  padding-top: var(--spacing-md);
-  border-top: 1px solid var(--modal-footer-border);
-  display: flex;
-  justify-content: flex-end; /* Align buttons to the right by default */
-  gap: var(--spacing-sm);
-}
-
-/* --- Toast Notifications --- */
-.toast-container {
-  position: fixed;
-  top: var(--spacing-lg);
-  right: var(--spacing-lg);
-  z-index: 1050; /* Higher than modals if they can overlap, or adjust as needed */
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-sm);
-}
-
-.toast {
-  padding: var(--spacing-md);
-  border-radius: var(--toast-border-radius);
-  box-shadow: var(--toast-box-shadow);
-  color: var(--toast-text-light);
-  background-color: var(--toast-default-bg); /* Default toast style */
-  opacity: 0;
-  transform: translateX(100%);
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  min-width: 250px; /* Example min-width */
-}
-
-.toast.show {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.toast-message { /* Class for the message text inside the toast */
-    margin: 0;
-    font-size: 0.95rem;
-}
-
-.toast-icon { /* Optional: if you add icons to toasts */
-    margin-right: var(--spacing-sm);
-}
-
-.toast-close-btn { /* Optional: if you add a close button */
-    background: none;
-    border: none;
-    color: inherit;
-    opacity: 0.7;
-    cursor: pointer;
-    padding: 0 var(--spacing-xs);
-    margin-left: var(--spacing-md);
-    font-size: 1.2em;
-}
-.toast-close-btn:hover {
-    opacity: 1;
-}
-
-/* Toast Types */
-.toast.toast-info {
-  background-color: var(--toast-info-bg);
-}
-.toast.toast-success {
-  background-color: var(--toast-success-bg);
-}
-.toast.toast-warning {
-  background-color: var(--toast-warning-bg);
-  color: var(--color-text); /* Warnings might look better with dark text on orange */
-}
-.toast.toast-warning .toast-close-btn {
-  color: var(--color-text);
-}
-.toast.toast-error {
-  background-color: var(--toast-error-bg);
-}
-
-.nav-item-active-bakes {
-  position: relative; /* For dropdown positioning */
-}
-
-.active-bakes-label.btn-nav-link { /* Style like other nav links but with green text */
-  color: var(--color-success) !important; /* Force green color */
-  font-weight: var(--font-weight-bold);
-  background-color: transparent;
-  border: none;
-  padding: var(--spacing-sm) var(--spacing-md);
-  cursor: pointer;
-  font-family: var(--font-family-body);
-  font-size: 1em; /* Match other nav links */
-  text-transform: none;
-}
-.active-bakes-label.btn-nav-link:hover {
-  color: var(--color-success-darker, #1E5E24) !important; /* Define --color-success-darker if needed */
-  background-color: rgba(var(--color-success-rgb), 0.1);
-}
-
-.active-bakes-dropdown {
-  position: absolute;
-  top: 100%; /* Position below the label */
-  left: 50%;
-  transform: translateX(-50%); /* Center the dropdown */
-  background-color: var(--color-surface);
-  border: var(--border-default);
-  border-radius: var(--border-radius-small);
-  box-shadow: var(--box-shadow-medium);
-  list-style: none;
-  padding: var(--spacing-sm) 0;
-  margin: var(--spacing-xs) 0 0 0;
-  min-width: 250px; /* Adjust as needed */
-  z-index: 1100; /* Ensure it's above other nav items, but below modals if necessary */
-}
-
-.active-bakes-dropdown li {
-  padding: 0;
-}
-
-.active-bakes-dropdown li a {
-  display: block;
-  padding: var(--spacing-sm) var(--spacing-md);
-  color: var(--color-text);
-  text-decoration: none;
-  font-weight: var(--font-weight-normal);
-  font-size: var(--font-size-small);
-}
-
-.active-bakes-dropdown li a:hover {
-  background-color: var(--color-secondary);
-  color: var(--color-primary-darker);
-}
-.active-bakes-dropdown li a small {
-    display: block;
-    font-size: 0.8em;
-    color: var(--color-text-muted);
-}
-/* Modal buttons will use .btn, .btn-secondary, .btn-danger from your existing styles */

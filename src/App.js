@@ -26,6 +26,12 @@ function AppContent() {
 
     return (
         <>
+            <h1 className="app-title">Sourdough Recipe Calculator</h1>
+            {token && currentUser && (
+                <div className="welcome-message" style={{ marginBottom: "1em", color: "#666" }}>
+                    Welcome, {currentUser.username || currentUser.email}!
+                </div>
+            )}
             <nav>
                 <ul className="main-nav-list">
                     <li className="nav-item-left">
@@ -38,9 +44,9 @@ function AppContent() {
                     </li>
 
                     {token && hasActiveBakes && (
-                        <li className="nav-item-active-bakes">
+                        <li className="nav-item-active-bakes" style={{ position: "relative" }}>
                             <button
-                                className="active-bakes-label btn-nav-link"
+                                className="active-bakes-label btn-nav-link nav-link"
                                 onClick={() => setIsBakesDropdownOpen(prev => !prev)}
                                 aria-expanded={isBakesDropdownOpen}
                                 aria-haspopup="true"
@@ -76,14 +82,15 @@ function AppContent() {
                                             }
                                             
                                             return (
-                                                <li key={bake.bakeLogId}> {/* Use bakeLogId from mapped object */}
+                                                <li key={bake.bakeLogId}>
                                                     <Link 
                                                         to={`/bake/${bake.bakeLogId}`}
                                                         onClick={() => setIsBakesDropdownOpen(false)}
                                                     >
-                                                        {bake.recipeName || 'Unnamed Recipe'} {/* Use recipeName from mapped object */}
-                                                        <small> (Status: {bake.status || 'Unknown'})</small>
-                                                        <small className="bake-start-time-dropdown"> 
+                                                        {bake.recipeName || 'Unnamed Recipe'}
+                                                        {/* <small> (Status: {bake.status || 'Unknown'})</small> */}
+                                                        <br />
+                                                        <small className="bake-start-time-dropdown">
                                                             Started: {formattedStartTime}
                                                         </small>
                                                     </Link>
@@ -96,17 +103,23 @@ function AppContent() {
                         </li>
                     )}
 
-                    <li className="nav-item-center">
-                        {token && currentUser && (
-                            <span>Welcome, {currentUser.username || currentUser.email}!</span>
-                        )}
-                    </li>
+                  
 
                     <li className="nav-item-right">
                         {!token ? (
                             <>
-                                <NavLink to="/login" className={({ isActive }) => isActive ? "active" : ""}>Login</NavLink>
-                                <NavLink to="/register" className={({ isActive }) => isActive ? "active" : ""}>Register</NavLink>
+                                <NavLink
+  to="/login"
+  className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
+>
+  Login
+</NavLink>
+<NavLink
+  to="/register"
+  className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
+>
+  Register
+</NavLink>
                             </>
                         ) : (
                             <button onClick={logout} className="btn btn-nav-logout">Logout</button>
@@ -136,7 +149,7 @@ function App() {
                     <DataProvider>
                         <ActiveBakesProvider>
                             <div className="App">
-                                <h1 className="app-title">Sourdough Recipe Calculator</h1>
+                                
                                 <AppContent />
                                 <ToastContainer />
                             </div>

@@ -1,0 +1,108 @@
+import { useReducer, useCallback } from 'react';
+import isEqual from 'lodash.isequal';
+import { arrayMove } from '@dnd-kit/sortable';
+import { getStepDnDId } from '../utils/recipeUtils';
+
+function sortIngredients(ingredients) {
+    return [...(ingredients || [])].sort((a, b) => Number(a.ingredient_id) - Number(b.ingredient_id));
+}
+
+function stepsReducer(state, action) {
+    state = Array.isArray(state) ? state : [];
+    switch (action.type) {
+        case 'SET_STEPS':
+            return Array.isArray(action.payload) ? action.payload : [];
+        case 'UPDATE_STEP': {
+            const { index, payload } = action;
+            return state.map((step, i) => i === index ? { ...step, ...payload } : step);
+        }
+        case 'ADD_STEP': {
+            const maxOrder = state.reduce((max, step) => Math.max(max, step.step_order || 0), 0);
+            // Ensure every new step includes customizeFlourMix and bespokeFlours
+            return [
+                ...state,
+                {
+                    ...action.payload,
+                    customizeFlourMix: false,
+                    bespokeFlours: [],
+                    temp_client_id: Date.now() + Math.random(),
+                    step_order: maxOrder + 1
+                }
+            ];
+        }
+        case 'DELETE_STEP':
+            return state.filter((_, i) => i !== action.index).map((step, i) => ({ ...step, step_order: i + 1 }));
+        case 'REORDER_STEPS':
+            return action.payload.map((step, i) => ({ ...step, step_order: i + 1 }));
+        default:
+            return state;
+    }
+}
+
+export function useRecipeSteps(initialSteps, predefinedSteps) {
+    initialSteps = Array.isArray(initialSteps) ? initialSteps : [];
+    const [steps, dispatch] = useReducer(stepsReducer, initialSteps);
+
+    const handleStepChange = useCallback((index, field, value) => {
+        const currentStep = steps[index];
+        if (field === 'stageIngredients') {
+            const sortedCurrent = sortIngredients(currentStep[field]);
+            const sortedNew = sortIngredients(value);
+            if (isEqual(sortedCurrent, sortedNew)) return;
+        } else if (isEqual(currentStep[field], value)) {
+            return;
+        }
+        dispatch({ type: 'UPDATE_STEP', index, payload: { [field]: value } });
+    }, [steps]);
+
+    const handleAddStep = useCallback(() => {
+        let defaultNewStepData = {
+            step_id: null,
+            step_name: 'New Step',
+            duration_override: null,
+            notes: '',
+            target_temperature_celsius: null,
+            contribution_pct: null,
+            target_hydration: null,
+            stretch_fold_interval_minutes: null,
+            stageIngredients: [],
+            // customizeFlourMix and bespokeFlours will be added in the reducer
+        };
+        if (predefinedSteps && predefinedSteps.length > 0) {
+            const firstPredefined = predefinedSteps[0];
+            defaultNewStepData = {
+                ...defaultNewStepData,
+                step_id: firstPredefined.step_id,
+                step_name: firstPredefined.step_name,
+                duration_override: firstPredefined.defaultDurationMinutes ?? null,
+            };
+        }
+        dispatch({ type: 'ADD_STEP', payload: defaultNewStepData });
+    }, [predefinedSteps]);
+
+    const handleDeleteStep = useCallback((indexToDelete) => {
+        dispatch({ type: 'DELETE_STEP', index: indexToDelete });
+    }, []);
+
+    const handleDragEnd = useCallback((event) => {
+        const { active, over } = event;
+        if (active && over && active.id !== over.id) {
+            const oldIndex = steps.findIndex(item => getStepDnDId(item) === active.id);
+            const newIndex = steps.findIndex(item => getStepDnDId(item) === over.id);
+            if (oldIndex === -1 || newIndex === -1) return;
+            const reorderedSteps = arrayMove(steps, oldIndex, newIndex);
+            dispatch({ type: 'REORDER_STEPS', payload: reorderedSteps });
+        }
+    }, [steps]);
+
+    const setSteps = useCallback((payload) => dispatch({ type: 'SET_STEPS', payload }), []);
+
+    return {
+        steps,
+        handleStepChange,
+        handleAddStep,
+        handleDeleteStep,
+        handleDragEnd,
+        setSteps,
+    };
+}

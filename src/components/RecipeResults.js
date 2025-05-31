@@ -5,29 +5,6 @@ import styles from './RecipeCalculator.module.css';
 /**
  * @param {object} props
  * @param {object} props.results - The detailed calculation results object.
- * @param {number} props.results.totalFlourInRecipe
- * @param {number} props.results.totalWaterInRecipe
- * @param {number} props.results.totalSaltInRecipe
- * @param {Array<object>} props.results.prefermentsSummary - Array of preferment details.
- * @param {string} props.results.prefermentsSummary[].name - Name of the preferment.
- * @param {number} props.results.prefermentsSummary[].totalWeight - Total weight of the preferment.
- * @param {number} props.results.prefermentsSummary[].flourWeight - Flour weight in the preferment.
- * @param {number} props.results.prefermentsSummary[].waterWeight - Water weight in the preferment.
- * @param {Array<object>} props.results.prefermentsSummary[].flourBreakdown - Flour types and weights in preferment.
- * @param {string} props.results.prefermentsSummary[].flourBreakdown[].name
- * @param {number} props.results.prefermentsSummary[].flourBreakdown[].weight
- * @param {object} props.results.mainDoughAdds
- * @param {Array<object>} props.results.mainDoughAdds.flours - Flours added to the main dough.
- * @param {string} props.results.mainDoughAdds.flours[].ingredient_name
- * @param {number} props.results.mainDoughAdds.flours[].weight
- * @param {number} props.results.mainDoughAdds.water - Water added to the main dough.
- * @param {number} props.results.mainDoughAdds.salt - Salt added to the main dough.
- * @param {number} props.results.grandTotalWeight - Overall calculated dough weight.
- * @param {object} props.results.bakerPercentages
- * @param {number} props.results.bakerPercentages.hydration
- * @param {number} props.results.bakerPercentages.salt
- * @param {number} props.results.bakerPercentages.prefermentedFlour
- * @param {Array<string>} [props.results.errors] - Optional array of error messages.
  */
 function RecipeResults({ results }) {
     if (!results) {
@@ -39,11 +16,73 @@ function RecipeResults({ results }) {
         );
     }
 
-    const formatWeight = (weight) => `${weight} g`; // Assuming grams for now
+    const formatWeight = (weight) =>
+        typeof weight === 'number' && !isNaN(weight) ? `${weight} g` : '';
+
+    // Gather all flour names used in preferments and main dough
+    const allFlourNames = [
+        ...(results.prefermentsSummary?.flatMap(pref =>
+            pref.flourBreakdown?.map(fb => fb.name) || []
+        ) || []),
+        ...(results.mainDoughAdds?.flours?.map(f => f.ingredient_name) || []),
+    ];
+    // Unique flour names, preserving order
+    const uniqueFlourNames = Array.from(new Set(allFlourNames));
+
+    // Table columns: Preferments (by name), Main Dough, and Total
+    const stepColumns = [
+        ...(results.prefermentsSummary?.map(pref => ({
+            key: `pref-${pref.name}`,
+            label: pref.name || 'Preferment',
+            flourBreakdown: pref.flourBreakdown || [],
+            flourWeight: pref.flourWeight,
+            waterWeight: pref.waterWeight,
+            totalWeight: pref.totalWeight,
+        })) || []),
+        {
+            key: 'main-dough',
+            label: 'Main Dough',
+            flourBreakdown: results.mainDoughAdds?.flours || [],
+            flourWeight: results.mainDoughAdds?.flours?.reduce((sum, f) => sum + (f.weight || 0), 0) || 0,
+            waterWeight: results.mainDoughAdds?.water || 0,
+            saltWeight: results.mainDoughAdds?.salt || 0,
+            totalWeight:
+                (results.mainDoughAdds?.flours?.reduce((sum, f) => sum + (f.weight || 0), 0) || 0) +
+                (results.mainDoughAdds?.water || 0) +
+                (results.mainDoughAdds?.salt || 0),
+        },
+    ];
+
+    // Helper to get flour weight for a column and flour name
+    function getFlourWeight(col, flourName) {
+        const flour = col.flourBreakdown.find(fb =>
+            (fb.name || fb.ingredient_name) === flourName
+        );
+        return flour ? flour.weight || flour.amount || flour.grams : '';
+    }
+
+    // Calculate totals for each flour across all steps
+    function getFlourTotal(flourName) {
+        return stepColumns.reduce((sum, col) => {
+            const w = getFlourWeight(col, flourName);
+            return sum + (typeof w === 'number' ? w : 0);
+        }, 0);
+    }
+
+    // Calculate total flour, water, salt, and overall total
+    const totalFlour = stepColumns.reduce((sum, col) => sum + (col.flourWeight || 0), 0);
+    const totalWater = stepColumns.reduce((sum, col) => sum + (col.waterWeight || 0), 0);
+    const totalSalt = stepColumns.reduce((sum, col) => sum + (col.saltWeight || 0), 0);
+    const totalOverall =
+        totalFlour + totalWater + totalSalt +
+        // Preferments may not have salt, so add their totalWeight if not main dough
+        stepColumns
+            .filter(col => !col.saltWeight)
+            .reduce((sum, col) => sum + ((col.totalWeight || 0) - (col.flourWeight || 0) - (col.waterWeight || 0)), 0);
 
     return (
         <div className={styles.resultsGroup}>
-            <h3>Recipe Calculation:</h3>
+            <h3>Ingredient Breakdown by Step:</h3>
 
             {results.errors && results.errors.length > 0 && (
                 <div className={styles.calculationErrors}>
@@ -57,87 +96,93 @@ function RecipeResults({ results }) {
             )}
 
             <div className={styles.resultsSection}>
-                <h4>Overall Recipe Targets & Totals:</h4>
-                <div className={styles.resultItem}>
-                    <span>Total Flour in Recipe:</span>
-                    <span>{formatWeight(results.totalFlourInRecipe)}</span>
-                </div>
-                <div className={styles.resultItem}>
-                    <span>Total Water in Recipe:</span>
-                    <span>{formatWeight(results.totalWaterInRecipe)}</span>
-                </div>
-                 <div className={styles.resultItem}>
-                    <span>Total Salt in Recipe:</span>
-                    <span>{formatWeight(results.totalSaltInRecipe)}</span>
-                </div>
-                 <div className={`${styles.resultItem} ${styles.total}`}>
-                    <strong>Calculated Dough Weight:</strong>
-                    <strong>{formatWeight(results.grandTotalWeight)}</strong>
-                </div>
-            </div>
-
-            {results.prefermentsSummary && results.prefermentsSummary.length > 0 && (
-                <div className={styles.resultsSection}>
-                    <h4>Preferment(s) Summary:</h4>
-                    {results.prefermentsSummary.map((pref, index) => (
-                        <div key={`pref-${index}`} className={styles.prefermentDetail}>
-                            <h5>{pref.name || `Preferment ${index + 1}`} (Contribution: {pref.contribution_pct_of_recipe_flour || 'N/A'}% of recipe flour, {pref.internal_hydration_pct || 'N/A'}% internal hydration)</h5>
-                            <div className={styles.resultItem}>
-                                <span>Total Weight:</span>
-                                <span>{formatWeight(pref.totalWeight)}</span>
-                            </div>
-                            <div className={styles.resultItemSub}>
-                                <span>Flour (in preferment):</span>
-                                <span>{formatWeight(pref.flourWeight)}</span>
-                            </div>
-                            {pref.flourBreakdown && pref.flourBreakdown.length > 0 && (
-                                <ul className={styles.flourBreakdownList}>
-                                    {pref.flourBreakdown.map((flour, flourIdx) => (
-                                        <li key={`pref-${index}-flour-${flourIdx}`}>
-                                            {flour.name}: {formatWeight(flour.weight)}
-                                        </li>
+            
+                <div style={{ overflowX: 'auto', margin: '1em 0' }}>
+                    <table className={styles.resultsTable}>
+                        <thead>
+                            <tr>
+                                <th>Ingredient</th>
+                                {stepColumns.map(col => (
+                                    <th key={col.key}>{col.label}</th>
+                                ))}
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {/* Total flour row */}
+                            <tr>
+                                <td><b>Total flour</b></td>
+                                {stepColumns.map((col, i) => (
+                                    <td key={col.key + '-flour'}>
+                                        {col.flourWeight ? formatWeight(col.flourWeight) : ''}
+                                    </td>
+                                ))}
+                                <td><b>{formatWeight(totalFlour)}</b></td>
+                            </tr>
+                            {/* Each custom flour */}
+                            {uniqueFlourNames.map(flourName => (
+                                <tr key={flourName}>
+                                    <td style={{ fontSize: 'smaller', paddingLeft: '1em' }}>
+                                        • {flourName}
+                                    </td>
+                                    {stepColumns.map(col => (
+                                        <td key={col.key + '-' + flourName} style={{ fontSize: 'smaller' }}>
+                                            {getFlourWeight(col, flourName)
+                                                ? formatWeight(getFlourWeight(col, flourName))
+                                                : ''}
+                                        </td>
                                     ))}
-                                </ul>
-                            )}
-                            <div className={styles.resultItemSub}>
-                                <span>Water (in preferment):</span>
-                                <span>{formatWeight(pref.waterWeight)}</span>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            <div className={styles.resultsSection}>
-                <h4>Main Dough Additions:</h4>
-                {results.mainDoughAdds && results.mainDoughAdds.flours && results.mainDoughAdds.flours.length > 0 ? (
-                    <>
-                        <p style={{ margin: '0.2em 0', fontWeight: '500' }}>Flour(s) added to main dough:</p>
-                        <ul className={styles.flourBreakdownList} style={{paddingLeft: 'var(--spacing-md)', marginBottom: 'var(--spacing-sm)'}}>
-                            {results.mainDoughAdds.flours.map((flour, index) => (
-                                <li key={`main-flour-${index}`}>
-                                    {flour.ingredient_name}: {formatWeight(flour.weight)}
-                                </li>
+                                    <td style={{ fontSize: 'smaller' }}>
+                                        {getFlourTotal(flourName)
+                                            ? formatWeight(getFlourTotal(flourName))
+                                            : ''}
+                                    </td>
+                                </tr>
                             ))}
-                        </ul>
-                    </>
-                ) : (
-                     <div className={styles.resultItem}>
-                        <span>Flour (added to main dough):</span>
-                        <span>{formatWeight(0)}</span>
-                    </div>
-                )}
-                <div className={styles.resultItem}>
-                    <span>Water (added to main dough):</span>
-                    <span>{formatWeight(results.mainDoughAdds?.water || 0)}</span>
-                </div>
-                 <div className={styles.resultItem}>
-                    <span>Salt (added to main dough):</span>
-                    <span>{formatWeight(results.mainDoughAdds?.salt || 0)}</span>
+                            {/* Water row */}
+                            <tr>
+                                <td><b>Water</b></td>
+                                {stepColumns.map(col => (
+                                    <td key={col.key + '-water'}>
+                                        {col.waterWeight ? formatWeight(col.waterWeight) : ''}
+                                    </td>
+                                ))}
+                                <td><b>{formatWeight(totalWater)}</b></td>
+                            </tr>
+                            {/* Salt row */}
+                            <tr>
+                                <td><b>Salt</b></td>
+                                {stepColumns.map(col => (
+                                    <td key={col.key + '-salt'}>
+                                        {col.saltWeight ? formatWeight(col.saltWeight) : ''}
+                                    </td>
+                                ))}
+                                <td><b>{formatWeight(totalSalt)}</b></td>
+                            </tr>
+                            {/* Total row */}
+                            <tr>
+                                <td><b>Total</b></td>
+                                {stepColumns.map(col => (
+                                    <td key={col.key + '-total'}>
+                                        <b>
+                                            {col.totalWeight
+                                                ? formatWeight(col.totalWeight)
+                                                : formatWeight(
+                                                      (col.flourWeight || 0) +
+                                                      (col.waterWeight || 0) +
+                                                      (col.saltWeight || 0)
+                                                  )}
+                                        </b>
+                                    </td>
+                                ))}
+                                <td><b>{formatWeight(results.grandTotalWeight)}</b></td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-
+            {/* You can keep the rest of your summary sections below if desired */}
             <div className={styles.resultsSection}>
                 <h4>Achieved Baker's Percentages (Final Dough):</h4>
                 <div className={styles.resultItem}>
@@ -153,7 +198,6 @@ function RecipeResults({ results }) {
                     <span>{results.bakerPercentages?.prefermentedFlour?.toFixed(1) || 'N/A'}%</span>
                 </div>
             </div>
-
         </div>
     );
 }
