@@ -33,3 +33,10 @@ export const DEFAULT_LEVAIN_STEP_TEMPLATE = {
     contribution_pct: 20,           // Default percentage of levain relative to total flour
     target_hydration: 100,          // Default hydration for the levain itself (e.g., 100% means equal parts flour and water)
 };
+
+/**
+ * The ID for the default bread flour used when not customizing the flour mix.
+ * IMPORTANT: Replace '1' with the actual ingredient_id of your default bread flour
+ * from your backend's ingredients table (as confirmed, '1' should be correct for your schema).
+ */
+export const DEFAULT_BREAD_FLOUR_ID = 1; // Make sure this line is present and exported
