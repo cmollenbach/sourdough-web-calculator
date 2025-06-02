@@ -140,123 +140,8 @@ body {
   font-weight: var(--font-weight-bold);
 }
 
-/* Navigation Styling */
-nav {
-  background-color: var(--color-surface);
-  padding: var(--spacing-sm) 0;
-  border-radius: var(--border-radius-medium);
-  margin-bottom: var(--spacing-lg);
-}
 
-nav ul.main-nav-list {
-  list-style: none;
-  padding: 0 var(--spacing-lg);
-  margin: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  min-height: 40px;
-}
 
-.nav-item-left,
-.nav-item-right {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-}
-
-/* Unified nav-link style for all links and nav buttons */
-.nav-link,
-.nav-item-right button,
-.active-bakes-label {
-  color: var(--color-link);
-  text-decoration: none;
-  font-weight: var(--font-weight-bold);
-  padding: var(--spacing-sm) var(--spacing-md);
-  border-radius: var(--border-radius-small);
-  background: none;
-  border: none;
-  transition: color 0.2s, background-color 0.2s;
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-  font-size: 1em;
-}
-
-/* Active and hover states */
-.nav-link.active,
-.nav-link:active,
-.nav-link:hover,
-.nav-item-right button:hover,
-.active-bakes-label:hover {
-  color: var(--color-link-hover);
-  background-color: var(--color-secondary);
-}
-
-/* Logout button specific (inherits nav-link styles) */
-.btn-nav-logout {
-  border: 1px solid var(--color-primary);
-  background: transparent;
-  color: var(--color-primary);
-  font-size: 0.95em;
-  padding: var(--spacing-sm) var(--spacing-md);
-}
-.btn-nav-logout:hover {
-  background-color: var(--color-primary);
-  color: var(--color-surface);
-  border-color: var(--color-primary);
-}
-
-/* Remove old nav-item-center and redundant selectors */
-.nav-item-center {
-  display: none;
-}
-
-.active-bakes-label {
-    background: none;
-    color: var(--color-success, #2E7D32); /* Use your green variable or fallback */
-    font-weight: var(--font-weight-bold);
-    padding: var(--spacing-sm) var(--spacing-md);
-    border-radius: var(--border-radius-small);
-    border: none;
-    transition: color 0.2s;
-    cursor: pointer;
-}
-
-.active-bakes-label:hover,
-.active-bakes-label:focus {
-    color: #388e3c; /* A darker green on hover/focus */
-    background: none;
-}
-
-.nav-item-active-bakes {
-  position: relative;
-}
-
-.active-bakes-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  min-width: 220px;
-  background: var(--color-surface, #fff);
-  border: 1px solid var(--color-border, #ccc);
-  border-radius: var(--border-radius-small, 4px);
-  box-shadow: var(--box-shadow-soft, 0 2px 6px rgba(0,0,0,0.08));
-  z-index: 100;
-  margin-top: 0.25em;
-  padding: 0.5em 0;
-  list-style: none;
-}
-
-.active-bakes-dropdown li {
-  padding: 0.5em 1em;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.active-bakes-dropdown li:hover {
-  background: var(--color-secondary, #f5f5f5);
-}
 /* Typography */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-family-headings);
@@ -398,21 +283,92 @@ select:focus {
     color: var(--color-text-light);
 }
 
-/* Specific class for the Nav Logout Button to inherit .btn but customize if needed */
-.btn-nav-logout {
-  /* Inherits .btn styles by applying both classes in JSX */
-  /* Override or add specific styles here if it differs from .btn or .btn-secondary */
-  background-color: transparent;
-  color: var(--color-primary);
-  border: 1px solid var(--color-primary);
-  padding: var(--spacing-sm) var(--spacing-md); /* Adjusted padding for nav */
-  font-size: 0.9em;
-  text-transform: none; /* Typically nav buttons aren't uppercase */
+nav {
+  background-color: var(--color-surface);
+  padding: var(--spacing-sm) 0;
+  border-radius: var(--border-radius-medium);
+  margin-bottom: var(--spacing-lg);
+  font-family: var(--font-family-body);
 }
+
+nav ul.main-nav-list {
+  list-style: none;
+  padding: 0 var(--spacing-lg);
+  margin: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 40px;
+}
+
+.nav-item-left,
+.nav-item-right {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+/* Base style for all nav items */
+.nav-link,
+.switch.nav-link,
+.btn-nav-logout,
+.active-bakes-label {
+  color: var(--color-link);
+  background: none;
+  border: none;
+  font-family: inherit;
+  font-weight: var(--font-weight-bold);
+  font-size: 1em;
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--border-radius-small);
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+/* "Active Bakes" is green */
+.active-bakes-label,
+.active-bakes-label:hover,
+.active-bakes-label:focus {
+  color: var(--color-success, #2E7D32);
+  text-decoration: none;
+}
+
+/* Only underline on hover/active */
+.nav-link:hover,
+.nav-link.active,
+.switch.nav-link:hover,
 .btn-nav-logout:hover {
-  background-color: var(--color-primary);
-  color: var(--color-surface);
-  border-color: var(--color-primary);
+  text-decoration: underline;
+  background: none;
+  color: var(--color-link-hover);
+}
+.switch.nav-link:hover {
+  text-decoration: underline;
+  background: none;
+  color: var(--color-link-hover);
+}
+.switch.nav-link.active {
+  text-decoration: none;
+  color: var(--color-link-hover);
+}
+
+/* Ensure switch label matches nav-link font and color */
+.switch-label {
+  font-family: inherit;
+  font-weight: var(--font-weight-bold);
+  font-size: 1em;
+  color: inherit;
+  margin-left: 0.5em;
+  letter-spacing: inherit;
+  text-transform: none;
+  /* Remove any browser default styling */
+  background: none;
+  border: none;
+  padding: 0;
+  display: inline;
 }
 
 /* Button with Spinner */
@@ -546,4 +502,8 @@ main {
   margin-bottom: var(--spacing-lg);
   line-height: var(--line-height-base);
   font-size: 1rem; /* Slightly larger for modal content */
+}
+
+.btn-nav-logout {
+  text-transform: none;
 }

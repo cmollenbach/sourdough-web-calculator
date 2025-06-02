@@ -30,6 +30,7 @@ function RecipeResults({ results }) {
     const uniqueFlourNames = Array.from(new Set(allFlourNames));
 
     // Table columns: Preferments (by name), Main Dough, and Total
+    console.log(results.prefermentsSummary) 
     const stepColumns = [
         ...(results.prefermentsSummary?.map(pref => ({
             key: `pref-${pref.name}`,
@@ -109,36 +110,53 @@ function RecipeResults({ results }) {
                             </tr>
                         </thead>
                         <tbody>
-                            {/* Total flour row */}
-                            <tr>
-                                <td><b>Total flour</b></td>
-                                {stepColumns.map((col, i) => (
-                                    <td key={col.key + '-flour'}>
-                                        {col.flourWeight ? formatWeight(col.flourWeight) : ''}
-                                    </td>
+                            {/* Show only one row if there is a single flour, otherwise show total + breakdown */}
+                            {uniqueFlourNames.length === 1 ? (
+                              <tr>
+                                <td><b>{uniqueFlourNames[0]}</b></td>
+                                {stepColumns.map(col => (
+                                  <td key={col.key + '-flour'}>
+                                    {getFlourWeight(col, uniqueFlourNames[0])
+                                      ? formatWeight(getFlourWeight(col, uniqueFlourNames[0]))
+                                      : ''}
+                                  </td>
                                 ))}
-                                <td><b>{formatWeight(totalFlour)}</b></td>
-                            </tr>
-                            {/* Each custom flour */}
-                            {uniqueFlourNames.map(flourName => (
-                                <tr key={flourName}>
-                                    <td style={{ fontSize: 'smaller', paddingLeft: '1em' }}>
-                                        • {flourName}
-                                    </td>
+                                <td><b>{formatWeight(getFlourTotal(uniqueFlourNames[0]))}</b></td>
+                              </tr>
+                            ) : (
+                              <>
+                                {/* Total flour row */}
+                                <tr>
+                                    <td><b>Total flour</b></td>
                                     {stepColumns.map(col => (
-                                        <td key={col.key + '-' + flourName} style={{ fontSize: 'smaller' }}>
-                                            {getFlourWeight(col, flourName)
-                                                ? formatWeight(getFlourWeight(col, flourName))
-                                                : ''}
+                                        <td key={col.key + '-flour'}>
+                                            {col.flourWeight ? formatWeight(col.flourWeight) : ''}
                                         </td>
                                     ))}
-                                    <td style={{ fontSize: 'smaller' }}>
-                                        {getFlourTotal(flourName)
-                                            ? formatWeight(getFlourTotal(flourName))
-                                            : ''}
-                                    </td>
+                                    <td><b>{formatWeight(totalFlour)}</b></td>
                                 </tr>
-                            ))}
+                                {/* Each custom flour */}
+                                {uniqueFlourNames.map(flourName => (
+                                    <tr key={flourName}>
+                                        <td style={{ fontSize: 'smaller', paddingLeft: '1em' }}>
+                                            • {flourName}
+                                        </td>
+                                        {stepColumns.map(col => (
+                                            <td key={col.key + '-' + flourName} style={{ fontSize: 'smaller' }}>
+                                                {getFlourWeight(col, flourName)
+                                                    ? formatWeight(getFlourWeight(col, flourName))
+                                                    : ''}
+                                            </td>
+                                        ))}
+                                        <td style={{ fontSize: 'smaller' }}>
+                                            {getFlourTotal(flourName)
+                                                ? formatWeight(getFlourTotal(flourName))
+                                                : ''}
+                                        </td>
+                                    </tr>
+                                ))}
+                              </>
+                            )}
                             {/* Water row */}
                             <tr>
                                 <td><b>Water</b></td>

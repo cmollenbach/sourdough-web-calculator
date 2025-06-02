@@ -1,7 +1,6 @@
 // src/RecipeCalculator.js
 import React, { useState, useEffect, useCallback, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
-import RecipeService, { AuthError } from './services/RecipeService';
 import RecipeFields from './components/RecipeFields';
 import RecipeManagementActions from './components/RecipeManagementActions';
 import RecipeResults from './components/RecipeResults';
@@ -9,9 +8,9 @@ import StepsColumn from './components/StepsColumn';
 import BaseTemplates from './components/BaseTemplates';
 import Modal from './components/common/Modal';
 import { arrayMove } from '@dnd-kit/sortable';
+import { assignStageIngredientsToSteps } from './utils/recipeUtils';
 
 import { DEFAULT_BREAD_FLOUR_ID } from './constants/recipeConstants';
-
 import styles from './components/RecipeCalculator.module.css';
 import { useAuth } from './contexts/AuthContext';
 import { useData } from './contexts/DataContext';
@@ -26,26 +25,30 @@ import {
     normalizeStepFlours,
     calculateRecipe,
     processRecipeSteps,
-    getStepDnDId
+    getStepDnDId,
+    normalizeRecipeStepsForSave
 } from './utils/recipeUtils';
-
-// Define constants for step IDs (from your schema)
-const LEVAIN_BUILD_STEP_ID = 1;
-const MIX_FINAL_DOUGH_STEP_ID = 3;
+import RecipeService from './services/RecipeService';
+import { AuthError } from './services/AuthError';
 
 const initialState = {
     ...INITIAL_RECIPE_FIELDS,
+    steps: [],
     currentRecipeId: null,
-    isLoadingRecipes: false,
-    isSaving: false,
-    feedbackMessage: { type: '', text: '' },
-    savedRecipes: [],
     selectedRecipeToLoad: '',
-    baseRecipeTemplates: [],
-    isLoadingBaseTemplates: false,
     isInTemplateMode: false,
     activeTemplateId: null,
+    feedbackMessage: { type: '', text: '' },
+    baseRecipeTemplates: [],
+    isLoadingBaseTemplates: false,
+    savedRecipes: [],
+    isLoadingRecipes: false,
+    isSaving: false,
 };
+
+// IDs for special steps
+const LEVAIN_BUILD_STEP_ID = 1;
+const MIX_FINAL_DOUGH_STEP_ID = 3;
 
 function recipeReducer(state, action) {
     switch (action.type) {
@@ -96,32 +99,19 @@ function recipeReducer(state, action) {
             return { ...state, isLoadingBaseTemplates: action.payload };
         case 'LOAD_TEMPLATE_DATA': {
             const templateData = action.payload.template;
-            const { predefinedSteps, levainStepIdDynamic, bulkFermentStepIdDynamic } = action.additionalData;
-
+            const { predefinedSteps } = action.additionalData;
             const finalProcessedSteps = (templateData.steps || []).map((rawStep, index) => {
                 const predefined = predefinedSteps.find(ps => ps.step_id === rawStep.step_id);
-                const currentStepName = rawStep.step_name || (predefined ? predefined.step_name : `Unknown Step ID ${rawStep.step_id}`);
-                const step = {
+                return {
                     ...rawStep,
-                    step_name: currentStepName,
-                    duration_override: rawStep.duration_override != null ? Number(rawStep.duration_override) : (predefined?.defaultDurationMinutes ?? null),
-                    target_temperature_celsius: rawStep.target_temperature_celsius != null ? Number(rawStep.target_temperature_celsius) : null,
-                    stretch_fold_interval_minutes: rawStep.stretch_fold_interval_minutes != null ? Number(rawStep.stretch_fold_interval_minutes) : null,
+                    step_name: rawStep.step_name || (predefined ? predefined.step_name : `Unknown Step ID ${rawStep.step_id}`),
                     notes: rawStep.notes || (predefined ? predefined.description : '') || '',
                     stageIngredients: Array.isArray(rawStep.stageIngredients) ? rawStep.stageIngredients : [],
                     recipe_step_id: undefined,
                     temp_client_id: Date.now() + index + Math.random() + '_template_step',
                     step_order: rawStep.step_order || index + 1,
+                    timingRelationType: rawStep.timingRelationType || rawStep.timing_relation_type || 'after_previous_completes',
                 };
-                if (Number(step.step_id) === levainStepIdDynamic) {
-                    const levainDefaultFromPredefined = predefinedSteps.find(ps => ps.step_id === levainStepIdDynamic);
-                    step.contribution_pct = step.contribution_pct ?? levainDefaultFromPredefined?.contribution_pct ?? 20;
-                    step.target_hydration = step.target_hydration ?? levainDefaultFromPredefined?.target_hydration ?? 100;
-                }
-                if (Number(step.step_id) === bulkFermentStepIdDynamic && step.stretch_fold_interval_minutes == null) {
-                    step.stretch_fold_interval_minutes = 30;
-                }
-                return step;
             });
             return {
                 ...state,
@@ -137,94 +127,73 @@ function recipeReducer(state, action) {
             };
         }
         case 'CLEAR_FORM': {
-            const { predefinedSteps } = action.payload;
-            const initialSteps = [];
-            // Add Levain Build if available
-            const levainTemplateStepInfo = predefinedSteps?.find(ps => ps.step_id === LEVAIN_BUILD_STEP_ID);
-            if (levainTemplateStepInfo) {
-                initialSteps.push({
-                    step_id: levainTemplateStepInfo.step_id,
-                    step_name: levainTemplateStepInfo.step_name,
+            // Always start with Build Levain and Mix Final Dough
+            const initialSteps = normalizeStepFlours([
+                {
+                    step_id: LEVAIN_BUILD_STEP_ID,
+                    step_type: 'Levain',
+                    step_name: 'Levain Build',
+                    stageIngredients: [],
                     step_order: 1,
-                    contribution_pct: 20,
-                    target_hydration: 100,
-                    duration_override: levainTemplateStepInfo.defaultDurationMinutes ?? null,
-                    notes: 'Build the levain.',
-                    target_temperature_celsius: 24,
-                    stretch_fold_interval_minutes: null,
+                },
+                {
+                    step_id: MIX_FINAL_DOUGH_STEP_ID,
+                    step_type: 'Mixing',
+                    step_name: 'Mix Final Dough',
                     stageIngredients: [],
-                    temp_client_id: Date.now(),
-                    customizeFlourMix: false,
-                    bespokeFlours: [],
-                });
-            }
-            // Add Mix Final Dough if available
-            const mixFinalDoughStepInfo = predefinedSteps?.find(ps => ps.step_id === MIX_FINAL_DOUGH_STEP_ID);
-            if (mixFinalDoughStepInfo) {
-                initialSteps.push({
-                    step_id: mixFinalDoughStepInfo.step_id,
-                    step_name: mixFinalDoughStepInfo.step_name,
-                    step_order: initialSteps.length + 1,
-                    duration_override: mixFinalDoughStepInfo.defaultDurationMinutes ?? null,
-                    notes: 'Mix the final dough.',
-                    target_temperature_celsius: 24,
-                    stretch_fold_interval_minutes: null,
-                    stageIngredients: [],
-                    temp_client_id: Date.now() + 1,
-                    customizeFlourMix: false,
-                    bespokeFlours: [],
-                });
-            }
+                    step_order: 2,
+                }
+            ], DEFAULT_BREAD_FLOUR_ID);
             return {
-                ...state, ...INITIAL_RECIPE_FIELDS,
-                saltPercentage: parseFloat(INITIAL_RECIPE_FIELDS.saltPercentage).toFixed(1),
-                steps: initialSteps, currentRecipeId: null, selectedRecipeToLoad: '',
-                isInTemplateMode: false, activeTemplateId: null,
+                ...state,
+                ...INITIAL_RECIPE_FIELDS,
+                saltPercentage: parseFloat(INITIAL_RECIPE_FIELDS.saltPercentage || 0).toFixed(1),
+                steps: initialSteps,
+                currentRecipeId: null,
+                selectedRecipeToLoad: '',
+                isInTemplateMode: false,
+                activeTemplateId: null,
                 feedbackMessage: { type: '', text: '' },
             };
         }
-
         case 'UPDATE_STEP': {
-    const { index, payload } = action;
-    return {
-        ...state,
-        steps: state.steps.map((step, i) => i === index ? { ...step, ...payload } : step)
-    };
-}
-case 'ADD_STEP': {
-    const maxOrder = state.steps.reduce((max, step) => Math.max(max, step.step_order || 0), 0);
-    return {
-        ...state,
-        steps: [
-            ...state.steps,
-            {
-                ...action.payload,
-                customizeFlourMix: false,
-                bespokeFlours: [],
+            const { index, payload } = action;
+            return {
+                ...state,
+                steps: state.steps.map((step, i) => i === index ? { ...step, ...payload } : step)
+            };
+        }
+        case 'ADD_STEP': {
+            const newStep = {
+                step_id: '', // blank until user selects
                 temp_client_id: Date.now() + Math.random(),
-                step_order: maxOrder + 1
+                step_type: '',
+                step_name: '',
+                stageIngredients: [],
+                step_order: state.steps.length + 1,
+            };
+            const steps = [...state.steps, newStep].map((step, i) => ({ ...step, step_order: i + 1 }));
+            return { ...state, steps };
+        }
+        case 'DELETE_STEP': {
+            const stepToDelete = state.steps[action.index];
+            if (stepToDelete && stepToDelete.step_id === MIX_FINAL_DOUGH_STEP_ID && action.index === 1) {
+                return state;
             }
-        ]
-    };
-}
-case 'DELETE_STEP':
-    return {
-        ...state,
-        steps: state.steps.filter((_, i) => i !== action.index).map((step, i) => ({ ...step, step_order: i + 1 }))
-    };
-case 'REORDER_STEPS':
-    return {
-        ...state,
-        steps: action.payload.map((step, i) => ({ ...step, step_order: i + 1 }))
-    };
+            const newSteps = state.steps.filter((_, i) => i !== action.index)
+                .map((step, i) => ({ ...step, step_order: i + 1 }));
+            return { ...state, steps: newSteps };
+        }
+        case 'REORDER_STEPS': {
+            const steps = action.payload.map((step, i) => ({ ...step, step_order: i + 1 }));
+            return { ...state, steps };
+        }
         default:
             return state;
     }
 }
 
-
-
-function RecipeCalculator() {
+function RecipeCalculator({ showTemplates, forceExitTemplateMode }) {
     const [state, dispatch] = useReducer(recipeReducer, initialState);
     const { isLoadingBaseTemplates, activeTemplateId } = state;
     const [calculationResults, setCalculationResults] = useState({
@@ -252,9 +221,6 @@ function RecipeCalculator() {
         isLoadingPredefinedSteps,
     } = useData();
 
-    // --- USE THE HOOK FOR STEP STATE ---
-
-
     const [modalState, setModalState] = useState({ isOpen: false, title: '', content: null, actions: [] });
     const openModal = (title, content, actions = []) => setModalState({ isOpen: true, title, content, actions });
     const closeModal = () => setModalState({ isOpen: false, title: '', content: null, actions: [] });
@@ -278,13 +244,14 @@ function RecipeCalculator() {
         const { active, over } = event;
         if (!over || active.id === over.id) return;
 
-        // Find the indexes in the current steps array
         const oldIndex = state.steps.findIndex(step => getStepDnDId(step) === active.id);
         const newIndex = state.steps.findIndex(step => getStepDnDId(step) === over.id);
 
         if (oldIndex === -1 || newIndex === -1) return;
 
-        const reordered = arrayMove(state.steps, oldIndex, newIndex);
+        const reordered = arrayMove(state.steps, oldIndex, newIndex)
+            .map((step, idx) => ({ ...step, step_order: idx + 1 }));
+
         dispatch({ type: 'REORDER_STEPS', payload: reordered });
     };
     const recipeInputFields = {
@@ -332,7 +299,7 @@ function RecipeCalculator() {
                     ...step,
                     stageIngredients: Array.isArray(step.stageIngredients) ? step.stageIngredients : []
                 }));
-                return { ...recipe, steps: stepsWithIngredients };
+                return { ...recipe, steps: stepsWithIngredients }; // <-- FIXED
             });
             dispatch({ type: 'SET_FIELD', field: 'savedRecipes', payload: recipesWithProcessedSteps });
         } catch (error) {
@@ -381,11 +348,16 @@ function RecipeCalculator() {
             poolishBuild: poolishBuildStepId,
             bigaBuild: bigaBuildStepId,
             bulkFermentSF: bulkFermentStepIdDynamic,
-            soakerPrep: soakerPrepStepId, // Make sure these are destructured from useData()
-            scaldPrep: scaldPrepStepId   // Make sure these are destructured from useData()
+            soakerPrep: soakerPrepStepId,
+            scaldPrep: scaldPrepStepId
         };
 
-        const normalizedSteps = normalizeStepFlours(state.steps, DEFAULT_BREAD_FLOUR_ID);
+        // Normalize before calculation
+        const normalizedSteps = normalizeRecipeStepsForSave(
+            state.steps,
+            state.currentRecipeId,
+            state.isInTemplateMode
+        );
 
         const newResults = calculateRecipe(
             state.targetDoughWeight,
@@ -431,7 +403,6 @@ function RecipeCalculator() {
         }
     }, [isLoggedIn, fetchBaseTemplates]);
 
-    // When loading a recipe/template, sync steps to the hook:
     const handleLoadRecipeChange = async (event) => {
         clearFeedback();
         const recipeIdToLoad = event.target.value;
@@ -497,7 +468,7 @@ function RecipeCalculator() {
         }
     };
 
-     const handleLoadTemplateData = useCallback((template) => {
+    const handleLoadTemplateData = useCallback((template) => {
         clearFeedback();
         dispatch({
             type: 'LOAD_TEMPLATE_DATA',
@@ -506,7 +477,6 @@ function RecipeCalculator() {
         });
         addToast(`Template "${template.recipe_name}" loaded. Modify and save as new.`, "info");
     }, [predefinedSteps, levainStepIdDynamic, bulkFermentStepIdDynamic, addToast, clearFeedback, dispatch]);
-
 
     const handleSaveOrUpdateRecipe = async () => {
         clearFeedback();
@@ -518,82 +488,25 @@ function RecipeCalculator() {
         if (state.steps.length === 0) {
             addToast('At least one recipe step is required.', "error"); return;
         }
-        for (const step of state.steps) {
-            if (step.step_id == null || step.step_order == null) {
-                addToast(`Each step must have a type and order.`, "error"); return;
-            }
-            if (step.step_id === levainStepIdDynamic ||
-                step.step_id === poolishBuildStepId || /* Add other preferment IDs here */
-                step.step_id === bigaBuildStepId) {
-                if (step.contribution_pct == null || step.target_hydration == null) {
-                    addToast(`${step.step_name || 'Preferment'} step requires Contribution % and Internal Hydration %.`, "error"); return;
-                }
-                if (!step.stageIngredients || step.stageIngredients.filter(ing => {
-                    const ingInfo = (availableIngredients || []).find(ai => ai.ingredient_id === ing.ingredient_id);
-                    return ingInfo && !ingInfo.is_wet;
-                }).length === 0) {
-                    addToast(`${step.step_name || 'Preferment'} step must have at least one flour defined.`, "error"); return;
-                }
-            }
-            if (step.step_id === mixFinalDoughStepId) {
-                 if (!step.stageIngredients || step.stageIngredients.filter(ing => {
-                    const ingInfo = (availableIngredients || []).find(ai => ai.ingredient_id === ing.ingredient_id);
-                    return ingInfo && !ingInfo.is_wet && ingInfo.ingredient_name?.toLowerCase() !== 'salt';
-                }).length === 0) {
-                    addToast(`The '${step.step_name || 'Mix Final Dough'}' step must have at least one flour defined.`, "error"); return;
-                }
-            }
-            if (step.step_id === bulkFermentStepIdDynamic) {
-                if (step.duration_override == null || step.stretch_fold_interval_minutes == null) {
-                    addToast(`Bulk Fermentation with S&F step requires Total Bulk Time and S&F Interval.`, "error"); return;
-                }
-            }
-        }
 
-        const isAttemptingToSaveNew = !state.currentRecipeId || state.isInTemplateMode;
-        if (isAttemptingToSaveNew) {
-            const recipeNameExists = state.savedRecipes.some(r => r.recipe_name === trimmedRecipeName);
-            if (recipeNameExists) {
-                addToast(`A recipe named "${trimmedRecipeName}" already exists. Please choose a different name.`, "error");
-                if (state.isInTemplateMode) {
-                    dispatch({ type: 'SET_FIELD', field: 'isInTemplateMode', payload: false });
-                    dispatch({ type: 'SET_FIELD', field: 'activeTemplateId', payload: null });
-                }
-                return;
-            }
-        }
+        // Centralized normalization
+        const stepsForSave = normalizeRecipeStepsForSave(state.steps, state.currentRecipeId, state.isInTemplateMode);
 
-        dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: true });
         const recipePayload = {
-            recipe_name: trimmedRecipeName, description: state.description,
+            recipe_name: trimmedRecipeName,
+            description: state.description,
             targetDoughWeight: parseFloat(state.targetDoughWeight),
             hydrationPercentage: parseFloat(state.hydrationPercentage),
             saltPercentage: parseFloat(state.saltPercentage),
-            steps: state.steps.map(step => ({
-                step_id: step.step_id,
-                step_order: step.step_order,
-                duration_override: step.duration_override,
-                notes: step.notes,
-                target_temperature_celsius: step.target_temperature_celsius,
-                contribution_pct: step.contribution_pct,
-                target_hydration: step.target_hydration,
-                stretch_fold_interval_minutes: step.stretch_fold_interval_minutes,
-                stageIngredients: (step.stageIngredients || []).map(si => ({
-                    ingredient_id: si.ingredient_id,
-                    percentage: si.percentage,
-                    is_wet: si.is_wet,
-                })),
-                recipe_step_id: (state.currentRecipeId && !state.isInTemplateMode && step.recipe_step_id) ? step.recipe_step_id : undefined
-            })),
+            steps: stepsForSave,
         };
 
-        const isUpdatingExistingUserRecipe = state.currentRecipeId && !state.isInTemplateMode;
-
+        dispatch({ type: 'SET_LOADING', field: 'isSaving', payload: true });
         try {
             let resultMessage = '';
             let updatedRecipeDataFromApi;
 
-            if (isUpdatingExistingUserRecipe) {
+            if (state.currentRecipeId && !state.isInTemplateMode) {
                 await RecipeService.updateRecipe(state.currentRecipeId, recipePayload);
                 resultMessage = 'Recipe updated successfully!';
                 updatedRecipeDataFromApi = await RecipeService.getRecipeById(state.currentRecipeId);
@@ -634,7 +547,7 @@ function RecipeCalculator() {
             handleClearForm();
             fetchUserRecipesList();
         } catch (error) {
-             console.error("RecipeCalculator: Error deleting recipe:", error);
+            console.error("RecipeCalculator: Error deleting recipe:", error);
             if (error instanceof AuthError) {
                 addToast(error.message || "Session expired. Please log in again.", "error");
                 logout();
@@ -661,7 +574,6 @@ function RecipeCalculator() {
         );
     };
 
-
     const getFeedbackClassName = () => {
         if (!state.feedbackMessage.text) return 'feedback-message hidden';
         if (state.feedbackMessage.type === 'error') return 'feedback-message feedback-message-error';
@@ -670,22 +582,29 @@ function RecipeCalculator() {
         return 'feedback-message';
     };
 
-
     useEffect(() => {
         // Only run on first mount
         handleClearForm();
         // eslint-disable-next-line
     }, []);
 
-    // Handler to update stageIngredients for a step (e.g., Mix Final Dough)
- const handleFlourMixChange = (stepId, newFlourMix) => {
-    const index = state.steps.findIndex(
-        step => step.recipe_step_id === stepId || step.temp_client_id === stepId
-    );
-    if (index !== -1) {
-        dispatch({ type: 'UPDATE_STEP', index, payload: { stageIngredients: newFlourMix } });
-    }
-};
+    useEffect(() => {
+        if (forceExitTemplateMode && state.isInTemplateMode) {
+            dispatch({ type: 'SET_FIELD', field: 'isInTemplateMode', payload: false });
+            dispatch({ type: 'SET_FIELD', field: 'activeTemplateId', payload: null });
+        }
+    }, [forceExitTemplateMode, state.isInTemplateMode]);
+
+    const handleFlourMixChange = (stepId, newFlourMix) => {
+        const index = state.steps.findIndex(
+            step => step.recipe_step_id === stepId || step.temp_client_id === stepId
+        );
+        if (index !== -1) {
+            dispatch({ type: 'UPDATE_STEP', index, payload: { stageIngredients: newFlourMix } });
+        }
+    };
+
+    const [isSimplifiedViewActive, setIsSimplifiedViewActive] = useState(false);
 
     return (
         <>
@@ -699,16 +618,16 @@ function RecipeCalculator() {
                 <p className={`feedback-message feedback-message-info ${styles.loadingMessage}`}>Loading essential data...</p>
             )}
 
-            {isLoggedIn() && 
-             predefinedSteps && predefinedSteps.length > 0 && 
-             availableIngredients && availableIngredients.length > 0 && 
-             !isLoadingPredefinedSteps && !isLoadingAvailableIngredients && (
-                 <BaseTemplates
-                    baseRecipeTemplates={state.baseRecipeTemplates}
-                    isLoadingBaseTemplates={isLoadingBaseTemplates}
-                    activeTemplateId={activeTemplateId}
-                    onLoadTemplateData={handleLoadTemplateData}
-                    isInTemplateMode={state.isInTemplateMode}
+            {showTemplates && isLoggedIn() && 
+              predefinedSteps && predefinedSteps.length > 0 && 
+              availableIngredients && availableIngredients.length > 0 && 
+              !isLoadingPredefinedSteps && !isLoadingAvailableIngredients && (
+                <BaseTemplates
+                  baseRecipeTemplates={state.baseRecipeTemplates}
+                  isLoadingBaseTemplates={isLoadingBaseTemplates}
+                  activeTemplateId={activeTemplateId}
+                  onLoadTemplateData={handleLoadTemplateData}
+                  isInTemplateMode={state.isInTemplateMode}
                 />
             )}
 
@@ -723,6 +642,7 @@ function RecipeCalculator() {
                             clearFeedback={clearFeedback}
                             isInputsSection={true}
                             isInTemplateMode={state.isInTemplateMode}
+                            isSimplifiedViewActive={isSimplifiedViewActive}
                         />
                     </div>
                     <RecipeResults results={calculationResults} />
@@ -755,6 +675,7 @@ function RecipeCalculator() {
                         )}
                     </div>
                 </div>
+                
                 <StepsColumn
                     recipeSteps={Array.isArray(state.steps) ? state.steps : []}
                     predefinedSteps={predefinedSteps || []}
@@ -763,18 +684,20 @@ function RecipeCalculator() {
                     onDeleteStep={handleDeleteStep}
                     onAddStep={handleAddStep}
                     onDragEnd={handleDragEnd}
-                    isLoadingPredefinedSteps={isLoadingPredefinedSteps || isLoadingAvailableIngredients} 
+                    isLoadingPredefinedSteps={isLoadingPredefinedSteps || isLoadingAvailableIngredients}
                     isSaving={state.isSaving}
-                    levainStepId={levainStepIdDynamic}
-                    bulkFermentStepId={bulkFermentStepIdDynamic}
-                    mixFinalDoughStepId={mixFinalDoughStepId}
+                    levainStepId={1}
+                    mixFinalDoughStepId={3}
                     poolishBuildStepId={poolishBuildStepId}
                     bigaBuildStepId={bigaBuildStepId}
                     soakerPrepStepId={soakerPrepStepId}
                     scaldPrepStepId={scaldPrepStepId}
                     getStepDnDId={getStepDnDId}
                     isInTemplateMode={state.isInTemplateMode}
-                    onFlourMixChange={handleFlourMixChange} 
+                    onFlourMixChange={handleFlourMixChange}
+                    recipe={state}
+                    isSimplifiedViewActive={isSimplifiedViewActive} 
+                    setIsSimplifiedViewActive={setIsSimplifiedViewActive} 
                 />
             </div>
         </>

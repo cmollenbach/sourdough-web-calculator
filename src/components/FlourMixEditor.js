@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import styles from './RecipeCalculator.module.css';
 import InfoButton from './InfoButton';
+import Modal from './common/Modal';
 
 function FlourMixEditor({
     customizeFlourMix,
@@ -15,6 +16,8 @@ function FlourMixEditor({
     onFlourMixChange,
     stepId,
 }) {
+    const [infoModal, setInfoModal] = useState({ open: false, title: '', content: '' });
+
     const flourOptions = (availableIngredients || []).filter(
         ing => !ing.is_wet && ing.ingredient_name?.toLowerCase() !== 'salt'
     );
@@ -140,7 +143,9 @@ function FlourMixEditor({
         ) ||
             availableIngredients.find(ing => !ing.is_wet))?.ingredient_name || 'Default Flour';
 
-
+    const handleInfoClick = (title, content) => {
+        setInfoModal({ open: true, title, content });
+    };
 
     return (
         <div className={styles.stageIngredientsSection}>
@@ -150,7 +155,7 @@ function FlourMixEditor({
                     <InfoButton
                         termKey="flour_mix_customization"
                         termDisplayName="Flour Mix Customization"
-                        onClick={renderInfoButton}
+                        onClick={handleInfoClick}
                         className={styles.infoButton}
                     />
                 </label>
@@ -225,6 +230,15 @@ function FlourMixEditor({
                 <p style={{fontSize: 'var(--font-size-small)', color: 'var(--color-text-muted)', marginTop: 'var(--spacing-xs)'}}>
                     Using default flour (100% {defaultFlourName}).
                 </p>
+            )}
+            {infoModal.open && (
+                <Modal
+                    isOpen={infoModal.open}
+                    onClose={() => setInfoModal({ ...infoModal, open: false })}
+                    title={infoModal.title}
+                >
+                    <div>{infoModal.content}</div>
+                </Modal>
             )}
         </div>
     );

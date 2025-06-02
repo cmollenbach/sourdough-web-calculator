@@ -51,3 +51,51 @@ export function shouldShowInfoForStepName(name) {
     ];
     return notableStepNames.includes(name);
 }
+
+export function buildFermentationPrompt(step, recipe, availableIngredients = []) {
+  // Build flour description (handles multiple flours)
+  let flourDesc = "Standard bread flour";
+  if (step.stageIngredients && step.stageIngredients.length > 0) {
+    const flourLines = step.stageIngredients
+      .filter(ing => {
+        const info = availableIngredients.find(ai => ai.ingredient_id === ing.ingredient_id);
+        return info && !info.is_wet;
+      })
+      .map(ing => {
+        const info = availableIngredients.find(ai => ai.ingredient_id === ing.ingredient_id);
+        return info
+          ? `${info.ingredient_name} (${ing.percentage}% of flour)`
+          : `Unknown flour (${ing.percentage}%)`;
+      });
+    if (flourLines.length > 0) {
+      flourDesc = flourLines.join(', ');
+    }
+  }
+
+  const starter = recipe.starterDescription || "It's active and has been recently fed.";
+  const inoculation = step.contribution_pct ? `${step.contribution_pct}% starter (relative to flour weight)` : "unknown inoculation";
+  const salt = recipe.saltPercentage ? `${recipe.saltPercentage}% salt (relative to flour weight)` : "unknown salt %";
+  const temperature = step.target_temperature_celsius
+    ? `My room (and dough) temperature is consistently around ${step.target_temperature_celsius}°C`
+    : "Room temperature is typical for sourdough";
+  const hydration = recipe.target_hydration ? `${recipe.target_hydration}% hydration` : null;
+
+  return `
+Hi there! I'm looking for some guidance on bulk fermentation time for my sourdough.
+
+Here are my current conditions:
+
+Starter: ${starter}
+Inoculation: I'm using ${inoculation}.
+Flour: ${flourDesc}.
+${hydration ? `Hydration: ${hydration}.` : ""}
+Salt: ${salt}.
+Temperature: ${temperature}.
+
+Given these parameters, could you help me estimate:
+
+An approximate bulk fermentation time?
+What are the key visual cues or dough characteristics I should be looking for to know when bulk fermentation is complete and the dough is ready for shaping?
+I'd appreciate it if the advice is concise and gives clear, actionable steps.
+`.trim();
+}

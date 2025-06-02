@@ -1,4 +1,3 @@
-// src/components/StepsColumn.js
 import React from 'react';
 import {
     DndContext,
@@ -17,7 +16,7 @@ import { SortableStepItem } from './SortableStepItem';
 import StepEditor from './StepEditor';
 import styles from './RecipeCalculator.module.css';
 
-function StepsColumn({
+export default function StepsColumn({
     recipeSteps,
     predefinedSteps,
     availableIngredients,
@@ -28,8 +27,8 @@ function StepsColumn({
     isLoadingPredefinedSteps,
     isSaving,
     levainStepId,
-    bulkFermentStepId,
     mixFinalDoughStepId,
+    bulkFermentStepId,
     poolishBuildStepId,
     bigaBuildStepId,
     soakerPrepStepId,
@@ -37,30 +36,46 @@ function StepsColumn({
     isInTemplateMode,
     getStepDnDId,
     onFlourMixChange,
+    recipe,
+    isSimplifiedViewActive,
+    setIsSimplifiedViewActive,
 }) {
     const sensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
     );
 
-    const addStepButtonText = () => {
-        if (isLoadingPredefinedSteps) return 'Loading types...';
-        if (predefinedSteps.length === 0 && !isLoadingPredefinedSteps) return 'No Step Types Loaded';
-        return '⊕ Add Step';
-    };
+    const visibleSteps = isSimplifiedViewActive
+        ? recipeSteps.filter(step => !step.is_advanced)
+        : recipeSteps;
+
+    console.log('recipeSteps', recipeSteps);
+    console.log('visibleSteps', visibleSteps);
 
     return (
         <div className={styles.stepsColumn}>
             <h3>Recipe Steps</h3>
+            <div style={{ marginBottom: '1em' }}>
+                <label>
+                    <input
+                        type="checkbox"
+                        checked={!isSimplifiedViewActive}
+                        onChange={e => setIsSimplifiedViewActive(!e.target.checked)}
+                        style={{ marginRight: '0.5em' }}
+                    />
+                    High Complexity
+                </label>
+            </div>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-                <SortableContext items={recipeSteps.map(s => getStepDnDId(s))} strategy={verticalListSortingStrategy}>
+                <SortableContext items={visibleSteps.map(s => getStepDnDId(s))} strategy={verticalListSortingStrategy}>
                     <div className={styles.stepsManagementSection}>
                         {isLoadingPredefinedSteps && (
                             <p className={styles.loadingMessage}>Loading essential data...</p>
                         )}
-                        {recipeSteps.map((step, index) => {
+                        {visibleSteps.map((step, index) => {
+                            const key = step.recipe_step_id || step.temp_client_id || step.step_id || index;
                             return (
-                                <SortableStepItem key={getStepDnDId(step)} id={getStepDnDId(step)}>
+                                <SortableStepItem key={key} id={key}>
                                     <StepEditor
                                         step={step}
                                         index={index}
@@ -71,12 +86,16 @@ function StepsColumn({
                                         isSaving={isSaving}
                                         isInTemplateMode={isInTemplateMode}
                                         levainStepId={levainStepId}
-                                        bulkFermentStepId={bulkFermentStepId}
                                         mixFinalDoughStepId={mixFinalDoughStepId}
+                                        bulkFermentStepId={bulkFermentStepId}
                                         poolishBuildStepId={poolishBuildStepId}
                                         bigaBuildStepId={bigaBuildStepId}
-                                        dndListeners={undefined}
+                                        soakerPrepStepId={soakerPrepStepId}
+                                        scaldPrepStepId={scaldPrepStepId}
                                         onFlourMixChange={onFlourMixChange}
+                                        recipe={recipe}
+                                        isSimplifiedViewActive={isSimplifiedViewActive}
+                                        setIsSimplifiedViewActive={setIsSimplifiedViewActive}
                                     />
                                 </SortableStepItem>
                             );
@@ -85,11 +104,20 @@ function StepsColumn({
                             <button
                                 type="button"
                                 onClick={onAddStep}
-                                disabled={isLoadingPredefinedSteps || (predefinedSteps && predefinedSteps.length === 0) || isSaving || (availableIngredients && availableIngredients.length === 0 && !isLoadingPredefinedSteps) }
+                                disabled={
+                                    isLoadingPredefinedSteps ||
+                                    (predefinedSteps && predefinedSteps.length === 0) ||
+                                    isSaving ||
+                                    (availableIngredients && availableIngredients.length === 0 && !isLoadingPredefinedSteps)
+                                }
                                 className="btn btn-secondary buttonWithSpinner"
                                 style={{ width: '100%', marginTop: 'var(--spacing-lg)' }}
                             >
-                                {addStepButtonText()}
+                                {isLoadingPredefinedSteps
+                                    ? 'Loading types...'
+                                    : (predefinedSteps.length === 0 && !isLoadingPredefinedSteps)
+                                        ? 'No Step Types Loaded'
+                                        : '⊕ Add Step'}
                                 {isSaving && <span className="buttonSpinner"></span>}
                             </button>
                         )}
@@ -99,5 +127,3 @@ function StepsColumn({
         </div>
     );
 }
-
-export default StepsColumn;

@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, NavLink, Navigate, Link } from 'react-router-dom';
 import LoginPage from './components/LoginPage';
 import RegisterPage from './components/RegisterPage';
@@ -11,12 +11,23 @@ import { DataProvider } from './contexts/DataContext';
 import { ToastProvider } from './contexts/ToastContext';
 import ToastContainer from './components/common/ToastContainer';
 import { ActiveBakesProvider, useActiveBakes } from './contexts/ActiveBakesContext';
+import BakeHistoryPage from './components/BakeHistoryPage';
+import BakeLogSummaryPage from './components/BakeLogSummaryPage'; // Add this import if not present
 import './App.css';
 
 function AppContent() {
     const { token, currentUser, isLoading, logout } = useAuth();
     const { activeBakes, isLoadingActiveBakes } = useActiveBakes();
     const [isBakesDropdownOpen, setIsBakesDropdownOpen] = useState(false);
+    const [isTemplateMode, setIsTemplateMode] = useState(token ? true : false);
+    const [showTemplates, setShowTemplates] = useState(true);
+
+    // Ensure Template Mode is off when templates are hidden
+    useEffect(() => {
+        if (!showTemplates && isTemplateMode) {
+            setIsTemplateMode(false);
+        }
+    }, [showTemplates, isTemplateMode]);
 
     if (isLoading) {
         return <div className="loading-app">Loading Application...</div>;
@@ -32,7 +43,7 @@ function AppContent() {
                     Welcome, {currentUser.username || currentUser.email}!
                 </div>
             )}
-            <nav>
+            <nav className="main-nav">
                 <ul className="main-nav-list">
                     <li className="nav-item-left">
                         <NavLink
@@ -40,6 +51,14 @@ function AppContent() {
                             className={({ isActive }) => isActive ? "active" : ""}
                         >
                             Calculator
+                        </NavLink>
+                    </li>
+                    <li className="nav-item-left">
+                        <NavLink
+                            to="/bake-history"
+                            className={({ isActive }) => "nav-link" + (isActive ? " active" : "")}
+                        >
+                            Bake History
                         </NavLink>
                     </li>
 
@@ -59,10 +78,8 @@ function AppContent() {
                                         <li>Loading...</li>
                                     ) : (
                                         activeBakes.map(bake => {
-                                            // ** USE THE CORRECT FIELD: bake.bake_start_timestamp **
-                                            const startTimeISO = bake.bake_start_timestamp; 
+                                            const startTimeISO = bake.bake_start_timestamp;
                                             let formattedStartTime = 'Unknown start time';
-
                                             if (startTimeISO) {
                                                 try {
                                                     const dateObj = new Date(startTimeISO);
@@ -71,16 +88,12 @@ function AppContent() {
                                                             year: 'numeric', month: 'numeric', day: 'numeric',
                                                             hour: '2-digit', minute: '2-digit'
                                                         });
-                                                    } else {
-                                                        console.warn(`Invalid date format for bake ${bake.bakeLogId}. Timestamp was:`, startTimeISO);
                                                     }
-                                                } catch (e) {
-                                                    console.error("Error formatting bake start time for bake " + bake.bakeLogId + ":", e, "Timestamp was:", startTimeISO);
-                                                }
-                                            } else {
-                                                console.warn(`bake_start_timestamp field missing for bake ${bake.bakeLogId}. Bake object:`, JSON.stringify(bake));
+                                                } catch (e) { /* ... */ }
                                             }
-                                            
+                                            // Show S&F info if present
+                                            const sfSets = bake.currentStepDetails?.number_of_sf_sets;
+                                            const sfInterval = bake.currentStepDetails?.stretch_fold_interval_minutes;
                                             return (
                                                 <li key={bake.bakeLogId}>
                                                     <Link 
@@ -88,7 +101,13 @@ function AppContent() {
                                                         onClick={() => setIsBakesDropdownOpen(false)}
                                                     >
                                                         {bake.recipeName || 'Unnamed Recipe'}
-                                                        {/* <small> (Status: {bake.status || 'Unknown'})</small> */}
+                                                        <br />
+                                                        <small>
+                                                            Step {bake.currentStepDetails?.step_order}: {bake.currentStepDetails?.step_name}
+                                                            {sfSets && (
+                                                                <> — {sfSets} S&F sets{sfInterval ? ` (every ${sfInterval} min)` : ""}</>
+                                                            )}
+                                                        </small>
                                                         <br />
                                                         <small className="bake-start-time-dropdown">
                                                             Started: {formattedStartTime}
@@ -103,7 +122,16 @@ function AppContent() {
                         </li>
                     )}
 
-                  
+<li className="nav-item-template-toggle">
+  <button
+    className="nav-link"
+    style={{ background: "none", border: "none", padding: "var(--spacing-sm) var(--spacing-md)", font: "inherit", fontWeight: "var(--font-weight-bold)", cursor: "pointer" }}
+    onClick={() => setShowTemplates(v => !v)}
+    aria-pressed={showTemplates}
+  >
+    {showTemplates ? "Hide Templates" : "Show Templates"}
+  </button>
+</li>
 
                     <li className="nav-item-right">
                         {!token ? (
@@ -133,7 +161,21 @@ function AppContent() {
                     <Route path="/login" element={!token ? <LoginPage /> : <Navigate to="/" replace />} />
                     <Route path="/register" element={!token ? <RegisterPage /> : <Navigate to="/" replace />} />
                     <Route path="/bake/:bakeLogId" element={token ? <GuidedBakePage /> : <Navigate to="/login" replace />} />
-                    <Route path="/" element={token ? <RecipeCalculator /> : <Navigate to="/public-calculator" replace />} />
+                    <Route
+  path="/"
+  element={
+    token ? (
+      <RecipeCalculator
+        showTemplates={showTemplates}
+        forceExitTemplateMode={!showTemplates}
+      />
+    ) : (
+      <Navigate to="/public-calculator" replace />
+    )
+  }
+/>
+          <Route path="/bake-history" element={token ? <BakeHistoryPage /> : <Navigate to="/login" replace />} />
+          <Route path="/bake-history/:bakeLogId" element={<BakeLogSummaryPage />} />
                     <Route path="*" element={<Navigate to={token ? "/" : "/public-calculator"} replace />} />
                 </Routes>
             </main>

@@ -1,12 +1,12 @@
-// src/components/GuidedBakePage.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import RecipeService, { AuthError } from '../services/RecipeService'; // Import AuthError
+import RecipeService, { AuthError } from '../services/RecipeService';
 import styles from './GuidedBakePage.module.css';
 import Modal from './common/Modal';
 import { useToast } from '../contexts/ToastContext';
-import { useAuth } from '../contexts/AuthContext'; 
+import { useAuth } from '../contexts/AuthContext';
 import { useActiveBakes } from '../contexts/ActiveBakesContext';
+import { calculateRecipe } from '../utils/recipeUtils';
 
 const formatTime = (totalSeconds) => {
     if (totalSeconds < 0) totalSeconds = 0;
@@ -20,21 +20,24 @@ function GuidedBakePage() {
     const location = useLocation();
     const navigate = useNavigate();
     const { addToast } = useToast();
-    const { logout } = useAuth(); 
-    const { refreshActiveBakes } = useActiveBakes(); // Get refreshActiveBakes from context
+    const { logout } = useAuth();
+    const { refreshActiveBakes } = useActiveBakes();
+
     const [isLoading, setIsLoading] = useState(true);
     const [isActionLoading, setIsActionLoading] = useState(false);
-    // const [error, setError] = useState(''); // Removed, using toasts instead
-
     const [bakeSessionDetails, setBakeSessionDetails] = useState(null);
     const [currentStep, setCurrentStep] = useState(null);
-    const [nextStepPreview, setNextStepPreview] = useState(null);
     const [userNotes, setUserNotes] = useState('');
-
     const [timeRemaining, setTimeRemaining] = useState(0);
     const [isTimerActive, setIsTimerActive] = useState(false);
     const [mainTimerJustCompleted, setMainTimerJustCompleted] = useState(false);
     const [bakeStatus, setBakeStatus] = useState('active');
+    const [modalState, setModalState] = useState({
+        isOpen: false,
+        title: '',
+        content: null,
+        actions: []
+    });
 
     const [isSAndFStep, setIsSAndFStep] = useState(false);
     const [sAndFIntervalDuration, setSAndFIntervalDuration] = useState(0);
@@ -43,20 +46,48 @@ function GuidedBakePage() {
     const [currentFold, setCurrentFold] = useState(0);
     const [totalFolds, setTotalFolds] = useState(0);
     const [sAndFAlertMessage, setSAndFAlertMessage] = useState('');
+    const [currentSfSet, setCurrentSfSet] = useState(1);
+    const [nextStepPreview, setNextStepPreview] = useState(null);
 
-    const [modalState, setModalState] = useState({
-        isOpen: false,
-        title: '',
-        content: null,
-        actions: []
-    });
-
-    const openModal = (title, content, actions = []) => {
+    // Modal helpers
+    const closeModal = useCallback(() => setModalState(ms => ({ ...ms, isOpen: false })), []);
+    const openModal = useCallback((title, content, actions = []) => {
         setModalState({ isOpen: true, title, content, actions });
-    };
+    }, []);
 
-    const closeModal = () => {
-        setModalState({ isOpen: false, title: '', content: null, actions: [] });
+    // --- Ingredient Calculation ---
+    // Defensive: always use attached recipe, even if no current step
+const calculationResults = useMemo(() => {
+    console.log("DEBUG: bakeSessionDetails", bakeSessionDetails);
+    if (
+        !bakeSessionDetails ||
+        !bakeSessionDetails.recipe ||
+        !Array.isArray(bakeSessionDetails.recipe.steps)
+    ) {
+        console.log("DEBUG: calculationResults not computed due to missing data");
+        return null;
+    }
+    const result = calculateRecipe(
+        bakeSessionDetails.recipe.targetDoughWeight,
+        bakeSessionDetails.recipe.hydrationPercentage,
+        bakeSessionDetails.recipe.saltPercentage,
+        bakeSessionDetails.recipe.steps,
+        bakeSessionDetails.availableIngredients || [],
+        bakeSessionDetails.stepTypeIds || {}
+    );
+    console.log("DEBUG: calculationResults", result);
+    return result;
+}, [bakeSessionDetails]);
+    // Helper to get calculated ingredient weights for the current step
+    const getCalculatedIngredientsForStep = (step) => {
+        if (!calculationResults || !step) return [];
+        const stepResult = calculationResults.stepBreakdown?.find(
+            s =>
+                (s.step_id && step.step_id && s.step_id === step.step_id) ||
+                (s.step_order && step.step_order && s.step_order === step.step_order)
+        );
+        if (!stepResult) return [];
+        return stepResult.ingredients || [];
     };
 
     const resetSAndFState = useCallback(() => {
@@ -67,6 +98,7 @@ function GuidedBakePage() {
         setCurrentFold(0);
         setTotalFolds(0);
         setSAndFAlertMessage('');
+        setCurrentSfSet(1);
     }, []);
 
     const loadData = useCallback(async (calledFromAction = false) => {
@@ -77,7 +109,7 @@ function GuidedBakePage() {
             if (!bakeLogId) {
                 addToast("No Bake Log ID available for this page.", "error");
                 if (!calledFromAction) setIsLoading(false);
-                navigate('/'); // Navigate away if no ID
+                navigate('/');
                 return;
             }
 
@@ -91,12 +123,12 @@ function GuidedBakePage() {
             if (dataToProcess) {
                 setBakeSessionDetails(dataToProcess);
                 setBakeStatus(dataToProcess.status || 'active');
+                // Prefer currentStepDetails, fallback to firstStepDetails (for just-started bakes)
                 const stepData = dataToProcess.currentStepDetails || dataToProcess.firstStepDetails;
 
                 if (stepData) {
                     setCurrentStep(stepData);
                     setUserNotes(stepData.user_step_notes || stepData.notes || '');
-                    // ... (timer and S&F setup logic remains the same)
                     if (stepData.planned_duration_minutes != null && stepData.actual_start_timestamp) {
                         const startTime = new Date(stepData.actual_start_timestamp).getTime();
                         const now = Date.now();
@@ -115,27 +147,28 @@ function GuidedBakePage() {
                         const intervalSecs = Number(stepData.stretch_fold_interval_minutes) * 60;
                         const totalDurationSecs = Number(stepData.duration_override) * 60;
                         const numFolds = intervalSecs > 0 ? Math.floor(totalDurationSecs / intervalSecs) : 0;
-                        
+
                         setTotalFolds(numFolds > 0 ? numFolds : 0);
-                        setCurrentFold(0); // Reset fold count on data load
+                        setCurrentFold(0);
                         setSAndFIntervalDuration(intervalSecs);
-                        setSAndFTimeRemaining(intervalSecs); // Reset S&F timer
-                        
+                        setSAndFTimeRemaining(intervalSecs);
+
                         if (numFolds > 0 && dataToProcess.status === 'active') {
-                            setIsSAndFTimerActive(true); // Start S&F timer if conditions met
+                            setIsSAndFTimerActive(true);
                         } else {
-                             setIsSAndFTimerActive(false);
+                            setIsSAndFTimerActive(false);
                         }
                     }
                 } else {
+                    // No current step (bake finished or abandoned)
+                    setCurrentStep(null);
+                    setIsTimerActive(false);
                     if (dataToProcess.status === 'active') {
                         addToast("No current active step found for this bake.", "info");
                     }
-                    setCurrentStep(null);
-                    setIsTimerActive(false);
                 }
                 setNextStepPreview(dataToProcess.nextStepDetails || null);
-            } else if (bakeLogId) { // Only if bakeLogId was present but dataToProcess is not
+            } else if (bakeLogId) {
                 addToast("Bake session not found or failed to load.", "error");
             }
         } catch (err) {
@@ -156,13 +189,13 @@ function GuidedBakePage() {
         loadData();
     }, [loadData]);
 
-    // Main step timer useEffect (with S&F stop logic from previous step)
+    // Main step timer useEffect
     useEffect(() => {
         let intervalId;
         if (bakeStatus === 'active' && isTimerActive && currentStep?.planned_duration_minutes != null && currentStep?.actual_start_timestamp) {
             const plannedDurationSeconds = currentStep.planned_duration_minutes * 60;
             const stepStartTime = new Date(currentStep.actual_start_timestamp).getTime();
-            
+
             intervalId = setInterval(() => {
                 const now = Date.now();
                 const elapsedSeconds = Math.floor((now - stepStartTime) / 1000);
@@ -174,20 +207,20 @@ function GuidedBakePage() {
                     setTimeout(() => setMainTimerJustCompleted(false), 1000);
                     addToast("Main step timer finished!", "info");
                     if (isSAndFStep) {
-                       setIsSAndFTimerActive(false);
-                       setSAndFAlertMessage('');
+                        setIsSAndFTimerActive(false);
+                        setSAndFAlertMessage('');
                     }
                 } else {
                     setTimeRemaining(remaining);
                 }
             }, 1000);
         } else {
-            if(isTimerActive) setIsTimerActive(false);
+            if (isTimerActive) setIsTimerActive(false);
         }
         return () => clearInterval(intervalId);
     }, [isTimerActive, currentStep, bakeStatus, addToast, isSAndFStep]);
 
-    // S&F timer useEffect (with isSAndFStep in dependency array from previous step)
+    // S&F timer useEffect
     useEffect(() => {
         let sAndFIntervalId;
         if (bakeStatus === 'active' && isSAndFTimerActive && isSAndFStep && currentFold < totalFolds) {
@@ -195,22 +228,22 @@ function GuidedBakePage() {
                 sAndFIntervalId = setInterval(() => {
                     setSAndFTimeRemaining(prev => prev - 1);
                 }, 1000);
-            } else { 
+            } else {
                 const foldNumberToAlert = currentFold + 1;
                 const alertMsg = `Time for Fold ${foldNumberToAlert} of ${totalFolds}!`;
                 addToast(alertMsg, 'info', 5000);
-                setSAndFAlertMessage(alertMsg); 
-                
+                setSAndFAlertMessage(alertMsg);
+
                 const newCurrentFold = currentFold + 1;
-                setCurrentFold(newCurrentFold); 
-                
-                if (newCurrentFold < totalFolds) { 
+                setCurrentFold(newCurrentFold);
+
+                if (newCurrentFold < totalFolds) {
                     setSAndFTimeRemaining(sAndFIntervalDuration);
-                } else { 
+                } else {
                     const allFoldsMsg = `All ${totalFolds} folds cued for this step.`;
                     addToast(allFoldsMsg, 'info', 5000);
                     setSAndFAlertMessage(allFoldsMsg);
-                    setIsSAndFTimerActive(false); 
+                    setIsSAndFTimerActive(false);
                 }
             }
         } else if (bakeStatus !== 'active' && isSAndFTimerActive) {
@@ -218,29 +251,29 @@ function GuidedBakePage() {
         } else if (currentFold >= totalFolds && isSAndFTimerActive) {
             setIsSAndFTimerActive(false);
         }
-       return () => clearInterval(sAndFIntervalId);
+        return () => clearInterval(sAndFIntervalId);
     }, [bakeStatus, isSAndFTimerActive, isSAndFStep, sAndFTimeRemaining, currentFold, totalFolds, sAndFIntervalDuration, addToast]);
 
-const handleStatusUpdate = async (newStatus) => {
+    const handleStatusUpdate = async (newStatus) => {
         if (!bakeLogId) return;
         setIsActionLoading(true);
         try {
             const result = await RecipeService.updateBakeStatus(bakeLogId, newStatus);
-            setBakeStatus(result.newStatus); 
-            
+            setBakeStatus(result.newStatus);
+
             if (newStatus === 'paused') {
                 setIsTimerActive(false);
                 setIsSAndFTimerActive(false);
                 addToast("Bake Paused", "info");
             } else if (newStatus === 'active') {
-                await loadData(true); // Reload to get current step and timer states
+                await loadData(true);
                 addToast("Bake Resumed", "info");
             } else if (newStatus === 'abandoned') {
                 addToast("Bake session abandoned.", "warning");
-                await refreshActiveBakes(); // <-- Call refresh here
-                setIsTimerActive(false);    // Explicitly stop timers
+                await refreshActiveBakes();
+                setIsTimerActive(false);
                 setIsSAndFTimerActive(false);
-                navigate('/'); // Navigate after refresh
+                navigate('/');
             }
         } catch (err) {
             console.error(`GuidedBakePage: Error updating status to ${newStatus}:`, err);
@@ -258,13 +291,13 @@ const handleStatusUpdate = async (newStatus) => {
 
     const handlePauseBake = () => handleStatusUpdate('paused');
     const handleResumeBake = () => handleStatusUpdate('active');
-    
+
     const confirmAbandonBake = () => {
-        handleStatusUpdate('abandoned'); // This will navigate on success
+        handleStatusUpdate('abandoned');
         closeModal();
     };
 
-    const handleAbandonBake = () => { // This function definition is fine
+    const handleAbandonBake = () => {
         openModal(
             "Confirm Abandon Bake",
             "Are you sure you want to abandon this bake session? This action cannot be undone.",
@@ -275,44 +308,46 @@ const handleStatusUpdate = async (newStatus) => {
         );
     };
 
+    const normalizedBakeLogId = bakeSessionDetails?.bakeLogId || bakeSessionDetails?.bake_log_id;
+
     const handleCompleteStep = async () => {
-        if (!currentStep || !bakeSessionDetails?.bakeLogId) {
+        if (!currentStep || !normalizedBakeLogId) {
             addToast("Cannot complete step: essential bake data is missing.", "error");
             return;
         }
         setIsActionLoading(true);
-        setIsTimerActive(false); // Stop main timer locally on completion attempt
-        // setIsSAndFTimerActive(false); // S&F timer is stopped by main timer effect or when all folds done
+        setIsTimerActive(false);
         setTimeRemaining(0);
 
         try {
             const currentStepLogIdentifier = currentStep.bake_step_log_id || currentStep.bakeStepLogId;
             if (!currentStepLogIdentifier) {
                 addToast("Missing current bake step log ID.", "error");
-                setIsActionLoading(false); // Reset loading state
-                return; // Exit early
+                setIsActionLoading(false);
+                return;
             }
 
             const result = await RecipeService.completeStep(
-                bakeSessionDetails.bakeLogId,
+                normalizedBakeLogId,
                 currentStepLogIdentifier,
                 userNotes
             );
             addToast("Step marked as complete!", "success");
 
-            if (result.bakeLogId && !result.nextStepDetails && !result.currentStepDetails) { // Bake finished
+            if (result.bakeLogId && !result.nextStepDetails && !result.currentStepDetails) {
                 setBakeStatus('completed');
                 setCurrentStep(null);
                 setNextStepPreview(null);
                 resetSAndFState();
+                await refreshActiveBakes();
                 openModal(
                     "Bake Finished!",
                     "Congratulations on completing your bake! 🎉",
                     [{ text: "Back to Recipes", onClick: () => { closeModal(); navigate('/'); }, variant: 'primary' }]
                 );
-                return; // No further loadData needed if bake is finished
+                return;
             }
-            await loadData(true); // Load next step details
+            await loadData(true);
         } catch (err) {
             console.error("GuidedBakePage: Error completing step:", err);
             if (err instanceof AuthError) {
@@ -321,42 +356,42 @@ const handleStatusUpdate = async (newStatus) => {
                 navigate('/login');
             } else {
                 addToast(err.message || "Failed to complete step.", "error");
-                // Consider if loadData(true) is still appropriate here or if timers should be reset based on error
-                await loadData(true); // Attempt to reload current state on non-auth error
+                await loadData(true);
             }
         } finally {
             setIsActionLoading(false);
         }
     };
-    
+
+    const handleConfirmSfSet = () => {
+        if (currentSfSet < (currentStep.number_of_sf_sets || 1)) {
+            setCurrentSfSet(currentSfSet + 1);
+        } else {
+            handleCompleteStep();
+        }
+    };
+
     const dismissSAndFAlert = () => {
         setSAndFAlertMessage('');
     };
 
-    // Removed the `if (error && !modalState.isOpen)` block
-    // The loading message now doesn't depend on local `error` state
     if (isLoading && !bakeSessionDetails && bakeStatus !== 'completed' && bakeStatus !== 'abandoned') {
         return <p className={`feedback-message feedback-message-info ${styles.loadingMessage}`}>Loading bake session...</p>;
     }
-    
-    // Fallback for when no bakeLogId or critical data is missing after initial load attempts.
-    // This condition might be hit if `loadData` navigates away due to no bakeLogId,
-    // or if it fails to set bakeSessionDetails after an error toast.
+
     if (!bakeLogId || (!isLoading && !bakeSessionDetails && !modalState.isOpen && bakeStatus !== 'completed' && bakeStatus !== 'abandoned')) {
-        // A toast for "No Bake Log ID" or "Failed to load" would have already been shown by loadData.
-        // This is a fallback display if the component still tries to render without essential data.
         return (
             <div className={styles.guidedBakePageContainer}>
-                 <p className={`feedback-message feedback-message-info`}>
+                <p className={`feedback-message feedback-message-info`}>
                     Could not display bake session. Please try starting again from a recipe or check active bakes.
-                 </p>
-                 <button onClick={() => navigate('/')} className="btn btn-primary">Go Home</button>
+                </p>
+                <button onClick={() => navigate('/')} className="btn btn-primary">Go Home</button>
             </div>
         );
     }
-    
+
     const isBakeOngoing = currentStep && (bakeStatus === 'active' || bakeStatus === 'paused');
-    
+
     const getTimerDisplayClasses = (isMainTimer = true) => {
         let classes = isMainTimer ? styles.timerDisplay : styles.sfTimerDisplay;
         if (isMainTimer && mainTimerJustCompleted) {
@@ -365,26 +400,19 @@ const handleStatusUpdate = async (newStatus) => {
             classes += ` ${styles.activeTimer}`;
         } else if (bakeStatus === 'paused') {
             classes += ` ${styles.pausedTimer}`;
-        } else if (isMainTimer && timeRemaining <=0 && currentStep?.planned_duration_minutes != null) {
+        } else if (isMainTimer && timeRemaining <= 0 && currentStep?.planned_duration_minutes != null) {
             classes += ` ${styles.finishedTimer}`;
-        } else if (!isMainTimer && sAndFTimeRemaining <= 0 && currentFold >= totalFolds) { // Changed: check currentFold vs totalFolds for S&F finished
+        } else if (!isMainTimer && sAndFTimeRemaining <= 0 && currentFold >= totalFolds) {
             classes += ` ${styles.finishedTimer}`;
         }
         return classes;
     };
 
     return (
-        // ... JSX Structure ...
-        // Conditional rendering for S&F section (using the fix from previous step)
-        // {isSAndFStep && totalFolds > 0 && 
-        //     (currentStep?.planned_duration_minutes == null || timeRemaining > 0) && (
-        //     <section>...</section>
-        // )}
-        // ... rest of the JSX (which seems largely fine for toast usage)
         <div className={styles.guidedBakePageContainer}>
             <Modal
                 isOpen={modalState.isOpen}
-                onClose={closeModal}
+                onClose={() => setModalState({ ...modalState, isOpen: false })}
                 title={modalState.title}
                 footerActions={modalState.actions}
             >
@@ -397,7 +425,7 @@ const handleStatusUpdate = async (newStatus) => {
                     <div className={`${styles.bakeStatusDisplay} ${styles[bakeStatus.toLowerCase()] || ''}`}>
                         Status: {bakeStatus.charAt(0).toUpperCase() + bakeStatus.slice(1)}
                     </div>
-                    <p>Bake Log ID: {bakeLogId}</p>
+                    <p>Bake Log ID: {normalizedBakeLogId}</p>
                 </header>
             )}
 
@@ -415,8 +443,8 @@ const handleStatusUpdate = async (newStatus) => {
                     <button onClick={() => navigate('/')} className="btn btn-secondary">Back to Recipes</button>
                 </section>
             )}
-             {!isBakeOngoing && bakeStatus !== 'completed' && bakeStatus !== 'abandoned' && !isLoading && (
-                 <p className="feedback-message feedback-message-info">No active step to display for this bake. It might be completed, abandoned, or an issue occurred.</p>
+            {!isBakeOngoing && bakeStatus !== 'completed' && bakeStatus !== 'abandoned' && !isLoading && (
+                <p className="feedback-message feedback-message-info">No active step to display for this bake. It might be completed, abandoned, or an issue occurred.</p>
             )}
 
             {isBakeOngoing && currentStep && (
@@ -428,21 +456,97 @@ const handleStatusUpdate = async (newStatus) => {
                         ) : (
                             <p className={styles.instructions}><em>No specific instructions for this step.</em></p>
                         )}
-                        <div className={styles.details}>
-                            {currentStep.planned_duration_minutes != null && (
-                                <p><strong>Planned Duration:</strong> {currentStep.planned_duration_minutes} minutes</p>
-                            )}
-                            {currentStep.target_temperature_celsius != null && (
-                                <p><strong>Target Temperature:</strong> {currentStep.target_temperature_celsius}°C</p>
-                            )}
-                            {isSAndFStep && totalFolds > 0 && currentStep.stretch_fold_interval_minutes && (
-                                <p><strong>Stretch & Folds:</strong> {totalFolds} total, every {currentStep.stretch_fold_interval_minutes} mins</p>
-                            )}
-                        </div>
-                        {currentStep.actual_start_timestamp && (
-                            <p className={styles.stepTimestamp}><small>Step Started: {new Date(currentStep.actual_start_timestamp).toLocaleString()}</small></p>
-                        )}
                     </section>
+
+                    {/* --- Ingredient Table (calculated) --- */}
+                    <section className={styles.section}>
+                        <h3>Ingredients for This Step</h3>
+                        {(() => {
+                            // Debug logs
+                            console.log("DEBUG: stepBreakdown steps", calculationResults?.stepBreakdown?.map(s => ({ step_id: s.step_id, step_order: s.step_order, step_name: s.step_name })));
+                            console.log("DEBUG: currentStep", currentStep);
+                            return null;
+                        })()}
+                        <table className={styles.ingredientTable}>
+                            <thead>
+                                <tr>
+                                    <th>Ingredient</th>
+                                    <th>%</th>
+                                    <th>g</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {(getCalculatedIngredientsForStep(currentStep).length > 0
+                                    ? getCalculatedIngredientsForStep(currentStep)
+                                    : (currentStep.stageIngredients || [])
+                                ).map(ing => (
+                                    <tr key={ing.ingredient_id || ing.ingredient_name || ing.stage_ingredient_id}>
+                                        <td>{ing.ingredient_name || `Ingredient ${ing.ingredient_id}`}</td>
+                                        <td>
+                                            {ing.percentage != null && ing.percentage !== ''
+                                                ? Number(ing.percentage).toLocaleString(undefined, { maximumFractionDigits: 2 })
+                                                : ''}
+                                        </td>
+                                        <td>
+                                            {ing.grams != null && ing.grams !== ''
+                                                ? Number(ing.grams).toLocaleString(undefined, { maximumFractionDigits: 1 })
+                                                : (
+                                                    ing.calculated_weight != null && ing.calculated_weight !== ''
+                                                        ? Number(ing.calculated_weight).toLocaleString(undefined, { maximumFractionDigits: 1 })
+                                                        : ''
+                                                )
+                                            }
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </section>
+
+                    {/* --- Full Step-by-Step Ingredient Breakdown --- */}
+                    {calculationResults && calculationResults.stepBreakdown && (
+                        <section className={styles.section}>
+                            <h3>All Steps & Ingredients</h3>
+                            {calculationResults.stepBreakdown.map((step, idx) => (
+                                <div key={step.step_id || step.step_order || idx} className={styles.stepIngredientBlock}>
+                                    <h4>
+                                        Step {step.step_order}: {step.step_name}
+                                    </h4>
+                                    <table className={styles.ingredientTable}>
+                                        <thead>
+                                            <tr>
+                                                <th>Ingredient</th>
+                                                <th>%</th>
+                                                <th>g</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {(step.ingredients || []).map(ing => (
+                                                <tr key={ing.ingredient_id || ing.ingredient_name || ing.stage_ingredient_id}>
+                                                    <td>{ing.ingredient_name || `Ingredient ${ing.ingredient_id}`}</td>
+                                                    <td>
+                                                        {ing.percentage != null && ing.percentage !== ''
+                                                            ? Number(ing.percentage).toLocaleString(undefined, { maximumFractionDigits: 2 })
+                                                            : ''}
+                                                    </td>
+                                                    <td>
+                                                        {ing.grams != null && ing.grams !== ''
+                                                            ? Number(ing.grams).toLocaleString(undefined, { maximumFractionDigits: 1 })
+                                                            : (
+                                                                ing.calculated_weight != null && ing.calculated_weight !== ''
+                                                                    ? Number(ing.calculated_weight).toLocaleString(undefined, { maximumFractionDigits: 1 })
+                                                                    : ''
+                                                            )
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ))}
+                        </section>
+                    )}
 
                     <section className={`${styles.section} ${styles.timerSection}`}>
                         <h3>Main Step Timer</h3>
@@ -451,57 +555,62 @@ const handleStatusUpdate = async (newStatus) => {
                                 <p className={getTimerDisplayClasses(true)}>
                                     {formatTime(timeRemaining)}
                                 </p>
+                                {timeRemaining <= 0 && !isTimerActive && (
+                                    <p className={styles.timerFinishedMessage}>
+                                        Timer finished. Please confirm this step is complete to continue.
+                                    </p>
+                                )}
                                 {bakeStatus === 'active' && !isTimerActive && timeRemaining > 0 && (
                                     <button onClick={() => setIsTimerActive(true)} className="btn btn-secondary btn-small" disabled={isActionLoading}>Start Main Timer</button>
                                 )}
                                 {bakeStatus === 'active' && isTimerActive && (
                                     <button onClick={() => setIsTimerActive(false)} className="btn btn-secondary btn-small" disabled={isActionLoading}>Pause Main Timer</button>
                                 )}
-                                 {bakeStatus === 'paused' && timeRemaining > 0 && <p><i>Main timer is paused.</i></p>}
+                                {bakeStatus === 'paused' && timeRemaining > 0 && <p><i>Main timer is paused.</i></p>}
                             </>
                         ) : (
                             <p>No main duration timer for this step.</p>
                         )}
                     </section>
-                    
-                    {isSAndFStep && totalFolds > 0 && 
-                     (currentStep?.planned_duration_minutes == null || timeRemaining > 0) && (
-                        <section className={`${styles.section} ${styles.timerSection} ${styles.sAndFTimerSection}`}>
-                            <h3>Stretch & Fold Progress</h3>
-                            {currentFold < totalFolds ? (
-                                <>
-                                    <p>Fold {currentFold + 1} of {totalFolds}</p>
-                                    {isSAndFTimerActive && bakeStatus === 'active' && (
-                                         <p className={getTimerDisplayClasses(false)}>{formatTime(sAndFTimeRemaining)} until next fold</p>
-                                    )}
-                                    {!isSAndFTimerActive && bakeStatus === 'active' && currentFold < totalFolds && timeRemaining > 0 && ( // Ensure main timer is also running for S&F start button
-                                        <button
-                                            onClick={() => {
-                                                setSAndFTimeRemaining(sAndFIntervalDuration);
-                                                setIsSAndFTimerActive(true);
-                                                setSAndFAlertMessage('');
-                                            }}
-                                            className="btn btn-secondary btn-small"
-                                            disabled={isActionLoading}
-                                        >
-                                            Start Interval for Fold {currentFold + 1}
-                                        </button>
-                                    )}
-                                </>
-                            ) : (
-                                <p>All {totalFolds} folds have been cued for this step.</p>
-                            )}
-                            {sAndFAlertMessage && (
-                                <div className={`feedback-message feedback-message-info ${styles.sAndFAlert}`}>
-                                    {sAndFAlertMessage}
-                                    {(sAndFAlertMessage.startsWith('Time for Fold') || sAndFAlertMessage.startsWith('All folds cued')) && (
-                                         <button onClick={dismissSAndFAlert} className="btn btn-secondary btn-small" style={{marginLeft: '10px'}}>OK</button>
-                                    )}
-                                </div>
-                            )}
-                             {bakeStatus === 'paused' && currentFold < totalFolds && <p><i>S&F alerts are paused.</i></p>}
-                        </section>
-                    )}
+
+                    {isSAndFStep && totalFolds > 0 &&
+                        (currentStep?.planned_duration_minutes == null || timeRemaining > 0) && (
+                            <section className={`${styles.section} ${styles.timerSection} ${styles.sAndFTimerSection}`}>
+                                <h3>Stretch & Fold Progress</h3>
+                                {currentFold < totalFolds ? (
+                                    <>
+                                        <p>Fold {currentFold + 1} of {totalFolds}</p>
+                                        {isSAndFTimerActive && bakeStatus === 'active' && (
+                                            <p className={getTimerDisplayClasses(false)}>{formatTime(sAndFTimeRemaining)} until next fold</p>
+                                        )}
+                                        {!isSAndFTimerActive && bakeStatus === 'active' && currentFold < totalFolds && timeRemaining > 0 && (
+                                            <button
+                                                onClick={() => {
+                                                    setSAndFTimeRemaining(sAndFIntervalDuration);
+                                                    setIsSAndFTimerActive(true);
+                                                    setSAndFAlertMessage('');
+                                                }}
+                                                className="btn btn-secondary btn-small"
+                                                disabled={isActionLoading}
+                                            >
+                                                Start Interval for Fold {currentFold + 1}
+                                            </button>
+                                        )}
+                                    </>
+                                ) : (
+                                    <p>All {totalFolds} folds have been cued for this step.</p>
+                                )}
+                                {sAndFAlertMessage && (
+                                    <div className={`feedback-message feedback-message-info ${styles.sAndFAlert}`}>
+                                        {sAndFAlertMessage}
+                                        {(sAndFAlertMessage.startsWith('Time for Fold') || sAndFAlertMessage.startsWith('All folds cued')) && (
+                                            <button onClick={dismissSAndFAlert} className="btn btn-secondary btn-small" style={{ marginLeft: '10px' }}>OK</button>
+                                        )}
+                                    </div>
+                                )}
+                                {bakeStatus === 'paused' && currentFold < totalFolds && <p><i>S&F alerts are paused.</i></p>}
+                            </section>
+                        )}
 
                     <section className={styles.section}>
                         <label htmlFor="userNotesForStep" className={styles.sectionTitle}>My Notes for this Step:</label>
@@ -526,7 +635,7 @@ const handleStatusUpdate = async (newStatus) => {
                         <button
                             onClick={handleCompleteStep}
                             className="btn btn-primary buttonWithSpinner"
-                            disabled={isActionLoading || isLoading || bakeStatus === 'paused' || (currentStep?.planned_duration_minutes != null && timeRemaining > 0 && isTimerActive) }
+                            disabled={isActionLoading || isLoading || bakeStatus === 'paused' || (currentStep?.planned_duration_minutes != null && timeRemaining > 0 && isTimerActive)}
                         >
                             {isActionLoading ? 'Completing...' : 'Mark Step as Complete'}
                             {isActionLoading && <span className="buttonSpinner"></span>}
@@ -552,6 +661,17 @@ const handleStatusUpdate = async (newStatus) => {
                             </button>
                         )}
                     </div>
+
+                    {isSAndFStep && totalFolds > 0 && currentStep.number_of_sf_sets && (
+                        <div className={styles.sfSetSection}>
+                            <p>
+                                Stretch & Fold Set {currentSfSet} of {currentStep.number_of_sf_sets}
+                            </p>
+                            <button onClick={handleConfirmSfSet} className="btn btn-secondary">
+                                {currentSfSet < (currentStep.number_of_sf_sets || 1) ? "Confirm S&F Set Done" : "Finish S&F Phase"}
+                            </button>
+                        </div>
+                    )}
                 </>
             )}
         </div>

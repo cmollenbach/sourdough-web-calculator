@@ -22,7 +22,9 @@ const RecipeService = {
             const errData = await response.json().catch(() => ({ message: `HTTP error! Status: ${response.status}. Failed to parse error JSON.` }));
             throw new Error(errData.message || `HTTP error fetching predefined step types! status: ${response.status}`);
         }
-        return response.json();
+        const data = await response.json();
+        // Each step now includes is_advanced
+        return data;
     },
 
     // NEW METHOD to fetch available ingredients
@@ -39,7 +41,9 @@ const RecipeService = {
             }
             throw new Error(errData.message || `HTTP error fetching available ingredients! status: ${response.status}`);
         }
-        return response.json();
+        const data = await response.json();
+        // Each ingredient now includes is_advanced
+        return data;
     },
 
     async getUserRecipes() {
@@ -162,7 +166,8 @@ const RecipeService = {
             }
             throw new Error(result?.message || `HTTP error starting bake! status: ${response.status}`);
         }
-        return result;
+        let newBakeLogIdFromLog = result.bakeLogId; // Extracting bakeLogId from result
+        return { bakeLogId: newBakeLogIdFromLog, ...result }; // Returning the bakeLogId along with the result
     },
 
     async completeStep(bakeLogId, currentBakeStepLogId, userNotes = '') {
@@ -235,7 +240,9 @@ const RecipeService = {
             }
             throw new Error(errData.message || `HTTP error fetching bake log ${bakeLogId}! status: ${response.status}`);
         }
-        return response.json();
+        const data = await response.json();
+        // data.currentStepDetails and data.historyStepDetails now include is_advanced
+        return data;
     }
 };
 

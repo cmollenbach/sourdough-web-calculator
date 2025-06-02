@@ -264,3 +264,17 @@
   padding: var(--spacing-xl);
   font-size: var(--font-size-base);
 }
+
+.ingredientTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1em;
+}
+.ingredientTable th, .ingredientTable td {
+  border: 1px solid #ddd;
+  padding: 0.5em;
+  text-align: left;
+}
+.ingredientTable th {
+  background: #f7f7f7;
+}

@@ -1,4 +1,3 @@
-// src/components/SortableStepItem.js
 import React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -6,35 +5,44 @@ import styles from './RecipeCalculator.module.css';
 
 export function SortableStepItem(props) {
   const {
-    attributes,
-    listeners, // We will pass these down
     setNodeRef,
     transform,
     transition,
     isDragging,
+    listeners,
+    attributes,
   } = useSortable({ id: props.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.7 : 1,
-    // No direct listeners here anymore
   };
 
-  const itemClassName = isDragging ? styles.sortableStepDragActive : '';
+  const itemClassName = [
+    isDragging ? styles.sortableStepDragActive : '',
+    props.children?.props?.step?.timingRelationType === 'with_previous_start' ? styles.stepItemConcurrent : '',
+    props.children?.props?.step?.timingRelationType === 'manual_independent' ? styles.stepItemIndependent : ''
+  ].join(' ');
 
-  // Clone the child (StepEditor) and pass down drag-related props
-  // The child will be responsible for applying listeners to a specific handle
+  // Visual icon for timing relation
+  let timingIcon = null;
+  if (props.children?.props?.step?.timingRelationType === 'with_previous_start') {
+    timingIcon = <span className={styles.concurrentIcon} title="Overlaps previous">║</span>;
+  } else if (props.children?.props?.step?.timingRelationType === 'manual_independent') {
+    timingIcon = <span className={styles.independentIcon} title="Independent">📌</span>;
+  }
+
+  // Clone the child and inject dndListeners and dndAttributes
+  const childWithDnD = React.cloneElement(props.children, {
+    dndListeners: listeners,
+    dndAttributes: attributes,
+  });
+
   return (
-    <div ref={setNodeRef} style={style} className={itemClassName} {...attributes}>
-      {React.Children.map(props.children, child => {
-        if (React.isValidElement(child)) {
-          // Pass listeners and other necessary DnD props to StepEditor
-          // StepEditor will need to accept and use 'dndListeners' for its drag handle
-          return React.cloneElement(child, { dndListeners: listeners });
-        }
-        return child;
-      })}
+    <div ref={setNodeRef} style={style} className={itemClassName}>
+      {childWithDnD}
+      {timingIcon}
     </div>
   );
 }
